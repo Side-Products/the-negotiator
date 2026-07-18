@@ -1,0 +1,47 @@
+import mongoose from "mongoose";
+
+const callSchema = new mongoose.Schema(
+  {
+    jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job", required: true },
+    specVersion: { type: Number },
+    vendorName: { type: String },
+    policyCardId: { type: String },
+    round: { type: Number, enum: [1, 2], default: 1 },
+    mode: { type: String, enum: ["sim", "roleplay"], default: "sim" },
+    status: {
+      type: String,
+      enum: ["pending", "live", "done", "failed"],
+      default: "pending",
+    },
+    elevenConversationId: { type: String },
+    transcript: [
+      {
+        role: { type: String },
+        text: { type: String },
+        turnIndex: { type: Number },
+        at: { type: Date },
+      },
+    ],
+    elevenTranscript: { type: mongoose.Schema.Types.Mixed },
+    recordingPath: { type: String },
+    leverageQuoteIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Quote" }],
+    negotiationEvents: [
+      {
+        leverId: { type: String },
+        beforeTotal: { type: Number },
+        afterTotal: { type: Number },
+        citedQuoteId: { type: mongoose.Schema.Types.ObjectId, ref: "Quote" },
+        turnRef: { type: Number },
+        note: { type: String },
+      },
+    ],
+    outcome: {
+      type: { type: String, enum: ["quote", "callback", "declined"] },
+      note: { type: String },
+      turnRef: { type: Number },
+    },
+  },
+  { timestamps: true },
+);
+
+export default mongoose.models.Call || mongoose.model("Call", callSchema);
