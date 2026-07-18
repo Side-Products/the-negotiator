@@ -32,12 +32,31 @@ cp .env.example .env.local   # fill in the values below
 | `ANTHROPIC_API_KEY` | console.anthropic.com |
 | `ELEVENLABS_INTAKE_AGENT_ID` / `ELEVENLABS_BUYER_AGENT_ID` | created by the next step |
 | `GOOGLE_PLACES_API_KEY` | optional — vendor discovery falls back to canned data |
+| `OPENAI_API_KEY` | platform.openai.com → API keys (WhatsApp intake chat) |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | console.twilio.com → Account Info (WhatsApp bot) |
+| `TWILIO_WHATSAPP_FROM` | `whatsapp:+14155238886` (shared sandbox number) |
+| `PUBLIC_BASE_URL` | your public URL, e.g. the ngrok https URL in dev |
 
 ```bash
 npm run create-agents   # creates both ElevenLabs agents (prompts + tools), prints the two IDs for .env.local
 npm run seed            # seeds a fully-completed demo job (fallback if live voice fails on stage)
 npm run dev             # http://localhost:3001
 ```
+
+## WhatsApp bot (Twilio)
+
+Job intake also works over WhatsApp: message the bot, it interviews you (GPT-driven, one question at a time, reusing the same vertical config), then confirms the spec and creates the job — same pipeline as the web intake.
+
+Setup (~5 min, uses the free Twilio sandbox):
+
+1. Fill `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `OPENAI_API_KEY` in `.env.local` (`TWILIO_WHATSAPP_FROM` stays `whatsapp:+14155238886`).
+2. Expose the app publicly: `ngrok http 3001` → put the https URL in `PUBLIC_BASE_URL`, restart `npm run dev`. (`PUBLIC_BASE_URL` also switches on Twilio signature validation for the webhook.)
+3. Twilio Console → Messaging → Try it out → **Send a WhatsApp message** → *Sandbox settings*: set **"When a message comes in"** to `<PUBLIC_BASE_URL>/api/whatsapp/webhook`, method POST, save.
+4. From your phone, WhatsApp the `join <code>` shown on that page to **+1 415 523 8886**, then send `hi`.
+
+Flow: `hi` → pick a vertical → answer the interview → confirm the summary with `yes` → the bot replies with the job link. `restart` resets the conversation. Code: `src/pages/api/whatsapp/webhook.js` (inbound + intake loop), `src/backend/services/whatsapp.js` (outbound sends via `sendWhatsApp()`), `src/backend/models/whatsappSession.js` (per-phone state).
+
+To message from your own number/name instead of the shared sandbox (which always shows as "Twilio Sandbox"): Console → Messaging → Senders → WhatsApp senders → register a number through the Meta flow, then change `TWILIO_WHATSAPP_FROM`.
 
 ## Demo flow
 
@@ -48,4 +67,4 @@ npm run dev             # http://localhost:3001
 
 ## Stack
 
-Next.js 15 (Pages Router, JS/JSX) · Tailwind 3 · MongoDB/Mongoose · `@elevenlabs/react` + `@elevenlabs/client` (voice sessions) · `@elevenlabs/elevenlabs-js` (TTS, agent management) · `@anthropic-ai/sdk` (vendor personas, document intake, report narrative). No auth — hackathon single-user build.
+Next.js 15 (Pages Router, JS/JSX) · Tailwind 3 · MongoDB/Mongoose · `@elevenlabs/react` + `@elevenlabs/client` (voice sessions) · `@elevenlabs/elevenlabs-js` (TTS, agent management) · `@anthropic-ai/sdk` (vendor personas, document intake, report narrative) · `openai` + `twilio` (WhatsApp intake bot). No auth — hackathon single-user build.
