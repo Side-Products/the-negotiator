@@ -9,6 +9,7 @@ const callSchema = new mongoose.Schema(
     round: { type: Number, enum: [1, 2], default: 1 },
     mode: { type: String, enum: ["sim", "roleplay", "real"], default: "sim" },
     phone: { type: String }, // real calls: the business number dialed
+    isTest: { type: Boolean, default: false }, // test dial to the user's own phone
     placeId: { type: String }, // Google Places id of the business (links out)
     rating: { type: Number }, // Google rating at discovery time
     batch: { type: Number }, // 1-based batch index for server-driven batch calls

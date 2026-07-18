@@ -279,33 +279,52 @@ export const createBatchCalls = async (job, { total = 20, batchSize = 5, locatio
 
 // Run all batches sequentially; within a batch, calls run concurrently.
 // Batch 2+ carries the best committed non-lowball quote so far as leverage.
-export const runBatchesForJob = async (jobId) => {
-	const calls = await Call.find({ jobId, batch: { $exists: true }, status: "pending" }).sort({
-		batch: 1,
-	});
-	const batches = [...new Set(calls.map((c) => c.batch))].sort((a, b) => a - b);
+// Re-entrant and restart-safe: a second invocation while a run is active is a
+// no-op, and calls orphaned by a server restart (stuck "live" with no voice
+// session) are reset to pending and picked up again.
+const activeRuns = new Set();
 
-	for (const b of batches) {
-		if (b > 1) {
-			const committed = await Quote.find({ jobId, committed: true });
-			const best = committed
-				.filter((q) => !(q.redFlags || []).some((f) => f.id === "lowball"))
-				.sort((x, y) => x.total - y.total || (y.guaranteed === true) - (x.guaranteed === true))[0];
-			if (best) {
-				await Call.updateMany(
-					{ jobId, batch: b, status: "pending" },
-					{ $set: { leverageQuoteIds: [best._id] } },
-				);
+export const runBatchesForJob = async (jobId) => {
+	const key = jobId.toString();
+	if (activeRuns.has(key)) return;
+	activeRuns.add(key);
+	try {
+		// Recover orphans: a live sim batch call with no ElevenLabs session can
+		// only be driven by this process; if no run is active, it is dead.
+		await Call.updateMany(
+			{ jobId, batch: { $exists: true }, status: "live", elevenConversationId: null },
+			{ $set: { status: "pending" } },
+		);
+
+		const calls = await Call.find({ jobId, batch: { $exists: true }, status: "pending" }).sort({
+			batch: 1,
+		});
+		const batches = [...new Set(calls.map((c) => c.batch))].sort((a, b) => a - b);
+
+		for (const b of batches) {
+			if (b > 1) {
+				const committed = await Quote.find({ jobId, committed: true });
+				const best = committed
+					.filter((q) => !(q.redFlags || []).some((f) => f.id === "lowball"))
+					.sort((x, y) => x.total - y.total || (y.guaranteed === true) - (x.guaranteed === true))[0];
+				if (best) {
+					await Call.updateMany(
+						{ jobId, batch: b, status: "pending" },
+						{ $set: { leverageQuoteIds: [best._id] } },
+					);
+				}
+			}
+			const batchCalls = calls.filter((c) => c.batch === b);
+			await Promise.allSettled(batchCalls.map((c) => runCall(c._id)));
+
+			// One retry pass per batch for transient failures (rate limits etc.).
+			const failed = await Call.find({ jobId, batch: b, status: "failed" });
+			if (failed.length) {
+				await Promise.allSettled(failed.map((c) => runCall(c._id)));
 			}
 		}
-		const batchCalls = calls.filter((c) => c.batch === b);
-		await Promise.allSettled(batchCalls.map((c) => runCall(c._id)));
-
-		// One retry pass per batch for transient failures (rate limits etc.).
-		const failed = await Call.find({ jobId, batch: b, status: "failed" });
-		if (failed.length) {
-			await Promise.allSettled(failed.map((c) => runCall(c._id)));
-		}
+	} finally {
+		activeRuns.delete(key);
 	}
 };
 

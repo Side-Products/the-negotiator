@@ -64,12 +64,12 @@ export default function DashboardLayout({ children }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-56 bg-card border-r border-border transform transition-all lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-card border-r border-border transform transition-all lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } ${
           collapsed
             ? "sidebar-collapsed lg:w-16 lg:[&_nav]:overflow-visible lg:[&_.nav-link]:justify-center"
-            : "lg:w-56"
+            : "lg:w-64"
         }`}
       >
         <div className="flex flex-col h-full">
@@ -79,8 +79,8 @@ export default function DashboardLayout({ children }) {
               collapsed ? "lg:justify-center lg:px-2" : ""
             }`}
           >
-            <span className={collapsed ? "lg:hidden" : ""}>
-              <Logo />
+            <span className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
+              <Logo className="text-base" />
             </span>
             {/* Desktop collapsed: expand */}
             <button
@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }) {
             {/* Desktop expanded: collapse */}
             <button
               onClick={toggleCollapsed}
-              className={`hidden p-1.5 -mr-3 text-muted-foreground/50 hover:text-foreground hover:bg-muted rounded transition-colors ${
+              className={`hidden flex-shrink-0 p-1.5 text-muted-foreground/50 hover:text-foreground hover:bg-muted rounded transition-colors ${
                 collapsed ? "" : "lg:inline-flex"
               }`}
               aria-label="Collapse sidebar"
@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Main content */}
       <div
-        className={`flex flex-col h-screen supports-[height:100dvh]:h-dvh ${collapsed ? "lg:pl-16" : "lg:pl-56"}`}
+        className={`flex flex-col h-screen supports-[height:100dvh]:h-dvh ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}
       >
         {/* Mobile hamburger strip (hidden on desktop) */}
         <div className="fixed top-0 left-0 right-0 z-10 flex items-center h-16 border-b border-border bg-background lg:hidden">

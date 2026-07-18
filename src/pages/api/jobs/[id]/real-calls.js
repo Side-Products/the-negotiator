@@ -27,11 +27,31 @@ export default async function handler(req, res) {
 			return res.status(409).json({ error: "Confirm the spec before starting calls" });
 		}
 
-		// Idempotent: one real-call run per job.
-		const existing = await Call.find({ jobId: job._id, mode: "real" });
-		if (existing.length) return res.status(200).json({ calls: existing, alreadyRunning: true });
+		const { limit = 3, location, testNumber } = req.body || {};
 
-		const { limit = 3, location } = req.body || {};
+		// Test dial: one call to the user's own phone so the whole pipeline
+		// (webhook tools, recording, transcript) can be verified before dialing
+		// real businesses. Repeatable; does not block the real run.
+		if (testNumber) {
+			const call = await Call.create({
+				jobId: job._id,
+				specVersion: job.specVersion,
+				vendorName: "Test vendor (your phone)",
+				phone: testNumber,
+				round: 1,
+				mode: "real",
+				isTest: true,
+				status: "pending",
+			});
+			runRealCallsSequentially([call._id]).catch((e) =>
+				console.error("test call failed:", e),
+			);
+			return res.status(200).json({ calls: [call], test: true });
+		}
+
+		// Idempotent: one real-call run per job (test dials excluded).
+		const existing = await Call.find({ jobId: job._id, mode: "real", isTest: { $ne: true } });
+		if (existing.length) return res.status(200).json({ calls: existing, alreadyRunning: true });
 		const { calls } = await startRealCalls(job, {
 			limit: Math.min(limit, MAX_REAL_CALLS),
 			location,

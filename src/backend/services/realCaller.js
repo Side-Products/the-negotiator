@@ -13,12 +13,16 @@ import { discoverVendors } from "@/backend/services/vendorDiscovery";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// PUBLIC_URL with PUBLIC_BASE_URL (WhatsApp bot) as fallback: one public
+// origin for the whole app unless deliberately split.
+export const publicUrl = () => process.env.PUBLIC_URL || process.env.PUBLIC_BASE_URL || "";
+
 export const realCallsConfigured = () =>
 	Boolean(
 		process.env.ELEVENLABS_API_KEY &&
 			process.env.ELEVENLABS_BUYER_AGENT_ID &&
 			process.env.ELEVENLABS_PHONE_NUMBER_ID &&
-			process.env.PUBLIC_URL,
+			publicUrl(),
 	);
 
 const RECORDING_NOTE =

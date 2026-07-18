@@ -32,9 +32,12 @@ function clientTool(name, description, properties, required) {
 }
 
 // Webhook variant for real phone calls: no browser on the line, so the tool
-// executes from ElevenLabs' side against our public API. {{call_id}} in the
-// URL is resolved from the conversation's dynamic variables (set server-side),
-// so the LLM cannot route a tool call to a different call's records.
+// executes from ElevenLabs' side against our public API. The {call_id} path
+// param is bound to the conversation's call_id dynamic variable (set
+// server-side), so the LLM cannot route a tool call to another call's records.
+const publicUrl = () =>
+  (process.env.PUBLIC_URL || process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+
 function webhookTool(name, description, { method = "POST", path, properties, required }) {
   const tool = {
     type: "webhook",
@@ -42,8 +45,11 @@ function webhookTool(name, description, { method = "POST", path, properties, req
     description,
     response_timeout_secs: 20,
     api_schema: {
-      url: `${(process.env.PUBLIC_URL || "").replace(/\/$/, "")}${path}`,
+      url: `${publicUrl()}${path}`,
       method,
+      path_params_schema: {
+        call_id: { type: "string", dynamic_variable: "call_id" },
+      },
     },
   };
   if (properties) {
@@ -169,7 +175,7 @@ function buildBuyerTools() {
       name: "log_quote_item",
       description:
         "Record one itemised fee line the vendor just stated. Call every time a price component is mentioned.",
-      path: "/api/calls/{{call_id}}/quote-items",
+      path: "/api/calls/{call_id}/quote-items",
       properties: {
         fee_key: str("The fee taxonomy key this line maps to (from the fee taxonomy list)."),
         label: str("Short human label for the line, e.g. 'Truck & travel'."),
@@ -182,7 +188,7 @@ function buildBuyerTools() {
       name: "commit_quote",
       description:
         "Commit the vendor's final quote. Returns the recomputed total and any red flags — react to them on the call before hanging up.",
-      path: "/api/calls/{{call_id}}/commit",
+      path: "/api/calls/{call_id}/commit",
       properties: {
         total: num("The all-in total the vendor stated."),
         guaranteed: bool("Whether the vendor will guarantee the total in writing (not-to-exceed)."),
@@ -194,7 +200,7 @@ function buildBuyerTools() {
       name: "record_negotiation_event",
       description:
         "Record a price movement caused by a negotiation lever. Call when the vendor changes their total in response to leverage.",
-      path: "/api/calls/{{call_id}}/negotiation-event",
+      path: "/api/calls/{call_id}/negotiation-event",
       properties: {
         lever_id: str("The id of the lever used (from the levers list)."),
         before_total: num("The vendor's total before the lever was applied."),
@@ -207,7 +213,7 @@ function buildBuyerTools() {
       name: "log_outcome",
       description:
         "Record how the call ended when there is no committed quote. Every call must end with commit_quote or this.",
-      path: "/api/calls/{{call_id}}/outcome",
+      path: "/api/calls/{call_id}/outcome",
       properties: {
         type: str("How the call ended.", { enum: ["callback", "declined"] }),
         note: str("Optional one-line context, e.g. 'asked to call back tomorrow morning'."),
@@ -218,12 +224,12 @@ function buildBuyerTools() {
       name: "get_leverage",
       description:
         "Fetch the competing bids you are allowed to reference. Returns an empty list if you have none — in that case you must not imply any competing bid exists.",
-      path: "/api/calls/{{call_id}}/leverage",
+      path: "/api/calls/{call_id}/leverage",
       method: "GET",
     },
   ];
 
-  const tools = process.env.PUBLIC_URL
+  const tools = publicUrl()
     ? defs.map((d) =>
         webhookTool(d.name, d.description, {
           method: d.method || "POST",
@@ -313,8 +319,8 @@ async function main() {
   const buyer = await upsertAgent(process.env.ELEVENLABS_BUYER_AGENT_ID, buildBuyerAgent());
   console.log(`${buyer.action} buyer agent:  ${buyer.id}`);
   console.log(
-    process.env.PUBLIC_URL
-      ? `Buyer tools: WEBHOOK mode -> ${process.env.PUBLIC_URL}`
+    publicUrl()
+      ? `Buyer tools: WEBHOOK mode -> ${publicUrl()}`
       : "Buyer tools: CLIENT mode (browser sessions only; set PUBLIC_URL + re-run for real phone calls)",
   );
   if (intake.action === "Created" || buyer.action === "Created") {
