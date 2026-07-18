@@ -207,7 +207,7 @@ select:focus-visible {
   display: none;
 }
 
-/* Input styles. Focus is shown with a brand-orange border (not a ring). */
+/* Input styles. Focus is shown with a brand-blue border (not a ring). */
 .input {
   @apply w-full pl-3 pr-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/55 focus:outline-none focus:border-primary-400;
 }
@@ -331,13 +331,13 @@ select:focus-visible {
     --secondary-foreground: 0 0% 9%;
     --muted: 53 22% 88%;
     --muted-foreground: 0 0% 45.1%;
-    --accent: 53 22% 88%; /* neutral warm hover; brand orange lives on --ring */
+    --accent: 53 22% 88%; /* neutral warm hover; brand blue lives on --ring */
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 50 20% 83%; /* soft warm border (~#ddd9c9) */
     --input: 50 20% 83%;
-    --ring: 18 100% 50%; /* brand orange (#ff4f01) focus ring */
+    --ring: 200 93% 47%; /* brand blue (#08A0E9) focus ring */
     --radius: 0.5rem;
   }
   .dark {
@@ -359,7 +359,7 @@ select:focus-visible {
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
-    --ring: 18 100% 50%; /* brand orange stays consistent in dark mode */
+    --ring: 200 93% 47%; /* brand blue stays consistent in dark mode */
   }
 }
 

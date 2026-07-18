@@ -1,18 +1,18 @@
 /** @type {import('tailwindcss').Config} */
 
-// Primary brand colors (Orange theme - #ED6B2F)
+// Primary brand colors (Blue theme - #08A0E9)
 const primaryColors = {
-  50: "#F5DECB",
-  100: "#FFF0E8",
-  200: "#FFE0D0",
-  300: "#FFCAB0",
-  400: "#ff4f01", // Primary orange
-  500: "#ED6B2F",
-  600: "#ED6B2F",
-  700: "#E65512",
-  800: "#7C310F",
-  900: "#5E250B",
-  950: "#3D1707",
+  50: "#DCEAF0", // ~12% brand blue over the cream surface — icon pill bg
+  100: "#D6EDFA",
+  200: "#B3E1F8",
+  300: "#7ECDF4",
+  400: "#08A0E9", // Primary blue
+  500: "#0890D2",
+  600: "#0880BA",
+  700: "#066A9B",
+  800: "#054E72",
+  900: "#043A55",
+  950: "#022330",
 };
 
 module.exports = {

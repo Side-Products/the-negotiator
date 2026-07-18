@@ -2,7 +2,7 @@
 // The shared, reusable button for the HomePixel design language.
 //
 // Props:
-//   variant: "solid"   — brand orange fill (default)
+//   variant: "solid"   — brand blue fill (default)
 //            "inverse" — foreground/background fill (black in light, white in dark)
 //            "outline" — bordered shell with a transparent inner fill
 //   size:    "md" (h-10, default) | "lg" (h-12)
@@ -28,7 +28,7 @@ const WIDTHS = { md: "w-10", lg: "w-12" };
 const FILL = {
   // `disabled:hover:*` pins the base color so a disabled button doesn't lighten
   // on hover; the dimming comes from `disabled:opacity-50` in BASE.
-  solid: "bg-[#ff4f01] text-white hover:bg-[#ff6326] disabled:hover:bg-[#ff4f01]",
+  solid: "bg-[#08A0E9] text-white hover:bg-[#2fb4f3] disabled:hover:bg-[#08A0E9]",
   inverse: "bg-foreground text-background hover:bg-foreground/85 disabled:hover:bg-foreground",
 };
 

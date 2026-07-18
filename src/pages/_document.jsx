@@ -4,7 +4,7 @@ export default function Document() {
   return (
     <Html lang="en" suppressHydrationWarning>
       <Head>
-        <meta name="theme-color" content="#ff4f01" />
+        <meta name="theme-color" content="#08A0E9" />
       </Head>
       <body className="bg-background text-foreground">
         <Main />
