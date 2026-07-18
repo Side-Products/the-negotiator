@@ -1,0 +1,378 @@
+# THE NEGOTIATOR: Two-Vertical Playbook
+**Hack-Nation x ElevenLabs, Challenge 01. Prepared 2026-07-18. Market focus: Germany.**
+
+Chosen verticals:
+1. **Architecture and Construction** (Bau): subcontractor and trade bids for architects, small developers and property managers
+2. **Tech Repair**: industrial electronics and IT hardware repair quotes for SMEs
+
+One engine, two config files. That is the whole thesis and it maps directly onto the challenge requirement that vertical-specific parameters must be configuration, not code.
+
+---
+
+## 0. TL;DR for the pitch
+
+- Both verticals are **phone-priced markets with professional buyers**. That is better than consumer markets: the buyer is a repeat customer, decides alone, and has a budget already approved.
+- **Vertical A (Bau)** proves the money: bids on the same scope of work routinely differ by tens of percent, and the buyer physically cannot call ten subcontractors before a deadline.
+- **Vertical B (Tech Repair)** proves the speed: when a machine is down, every hour costs money, and the buyer needs three repair quotes today, not next week.
+- The demo shows the **same agent, same JSON spec, two config files**, and at least one live price movement caused by leverage the agent itself collected.
+- German angle for the jury: existing platforms in this market monetise the **supplier** side by selling leads. Ours monetises the **buyer** side. That is the first time incentives point at the customer.
+
+---
+
+## 1. Why these two, in one paragraph each
+
+**Architecture and Construction.** An architect or a small developer needs three comparable bids for every trade on every project: electrical, plumbing, drywall, scaffolding, screed, demolition. German construction has around 564,000 craft enterprises generating roughly 762 billion euro in revenue, and nearly all of the small ones sell by phone. The buyer's problem is not finding companies, it is that quotes arrive late, in incompatible formats, with positions marked "bauseits" (excluded, to be provided by the client) that silently move cost back onto the buyer. Waiting time is structurally long: German craft businesses reported an average of about 9 weeks between order and execution, over 13 weeks in construction trades, and a quarter of people looking for a tradesperson consider the response time too slow, with 17 percent waiting more than a month just for a quote. An agent that calls twelve companies in parallel, asks the same questions and forces itemisation is solving a real, daily, expensive problem.
+
+**Tech Repair.** Two sub-segments, pick one for the demo and mention the other. (a) **Industrial electronics**: variable frequency drives, servo amplifiers, PLCs, HMI panels, industrial PCs. Repair specialists work quote-by-quote, there is no price list anywhere, and the alternative to a 600 euro repair is often a 12,000 euro new unit or an obsolete part that cannot be bought at all. Speed is sold explicitly: one German provider offers a free repair estimate within 7 working days, or a 24-hour estimate for an extra 110 euro fee, which tells you exactly how valuable speed is in this market. (b) **SME IT fleet repair**: laptops, screens, docking stations for a 40-person company. Lower ticket, higher frequency. Consumer phone repair is deliberately excluded because comparison portals already exist there (kaputt.de and similar) and the ticket is too small to justify a negotiation.
+
+---
+
+## 2. Ideal Customer Profile
+
+| | Vertical A: Bau | Vertical B: Tech Repair |
+|---|---|---|
+| Buyer role | Architect, project manager, small developer, property manager | Maintenance manager, plant electrician, IT admin, works manager |
+| Company size | 3 to 30 people | 20 to 300 people |
+| Decision | Single person, no procurement department | Single person, budget from maintenance cost centre |
+| Frequency | Several trades per project, several projects per year | Weekly to monthly, unplanned |
+| Ticket | 5,000 to 200,000 euro per trade package | 300 to 5,000 euro per unit, avoided replacement 5,000 to 50,000 euro |
+| Trigger | Deadline for tender comparison, client presentation | Machine down, device dead |
+| Why they buy | Time, and defensible documentation of the price comparison | Downtime cost per hour |
+
+The second row is the important one for selling: no procurement department means no six-week approval cycle.
+
+---
+
+## 3. The pain, with numbers you can put on a slide
+
+**Bau**
+- Average waiting time between order and execution in German craft: about 9.1 weeks overall, 13.4 weeks in construction trades (ZDH economic report)
+- 17 percent of people seeking a service provider wait more than a month for a quote to be produced, and a quarter consider response times too slow (Gelbe Seiten study)
+- Sector scale: around 564,000 craft enterprises, about 762 billion euro revenue in 2024 (Destatis), around 1 million registered businesses per chamber records (ZDH)
+- Comparability failure is structural: heat pump offers analysed by the consumer advice centre showed price differences of up to 300 percent for structurally identical houses, with missing positions such as foundation, electrical work and hydraulic balancing appearing later as extra cost. Same mechanism applies across construction trades: the cheapest bid is usually the least complete one.
+- Asbestos and hazardous material work as a bonus example: regional cost swings of 20 to 40 percent, mandatory TRGS 519 certification, and quotes that hide scaffolding, clearance measurement and landfill fees
+
+**Tech Repair**
+- No public price list exists for industrial electronics repair. Every provider states that cost depends on device type, fault pattern and effort, and is only given after a written estimate
+- Speed is explicitly monetised: one provider gives a free estimate in 7 working days or charges 110 euro for a 24-hour estimate
+- The buyer is comparing against replacement cost and obsolescence, not against another repair price, which means they have no idea whether a quote is fair
+- Distribution channel exists (Sonepar with Unis Group offers a repair service covering PLCs, servo controls, HMI panels, CNC controls, drives and robot electronics), which proves the category is real and industrialising, and also gives you a benchmark counterparty
+
+---
+
+## 4. Shared architecture: one engine, two configs
+
+```
+intake (voice or document)
+      |
+      v
+  job_spec.json  <-- user confirms, reused verbatim in every call
+      |
+      v
+  call orchestrator  ---> N parallel calls (ElevenLabs Agents + Twilio/SIP)
+      |                        |
+      |                        v
+      |                  quote_extractor (tool call mid-conversation)
+      v
+  negotiation round 2  <--- leverage = best verified competing quote
+      |
+      v
+  ranked report (transcript citations, itemised fees, recommendation)
+```
+
+**What lives in code (never changes):** intake state machine, call orchestration, barge-in and friction handling, AI disclosure logic, quote schema validation, leverage selection, ranking and reporting, honesty constraints.
+
+**What lives in the config file (per vertical):**
+
+```yaml
+vertical: bau_electrical            # or: tech_repair_industrial
+job_spec_schema: ./schemas/bau_electrical.json
+intake_questions:                   # what a professional estimator would ask
+  - id: q1
+    text: "Wie viele Quadratmeter Nutzfläche hat das Objekt?"
+    maps_to: area_sqm
+price_benchmarks:
+  unit: eur_per_sqm
+  p25: 85
+  median: 110
+  p75: 145
+  source: "internal reference set, 2026"
+red_flags:
+  - rule: "quote < 0.7 * median"
+    label: "verdächtig niedrig, prüfe fehlende Positionen"
+  - rule: "missing_positions contains 'Gerüst' or 'Entsorgung'"
+    label: "unvollständiges Angebot"
+mandatory_line_items:               # the agent refuses to close without these
+  - anfahrt
+  - geruest
+  - entsorgung
+  - nachtragsklausel
+negotiation_levers:
+  - competing_bid
+  - fixed_price_instead_of_hourly
+  - off_season_scheduling
+  - bundle_multiple_trades
+disclosure_line: "Ich bin ein KI-Assistent und hole im Auftrag von {client} Angebote ein."
+```
+
+Switching from an electrical bid to a drive repair means swapping this file. Say that sentence out loud in the demo, then actually do it on stage.
+
+---
+
+## 5. Vertical A config: Architecture and Construction
+
+### 5.1 Job spec (JSON)
+
+```json
+{
+  "vertical": "bau",
+  "trade": "elektro",
+  "project": {
+    "type": "Sanierung Mehrfamilienhaus",
+    "address_city": "Dresden",
+    "area_sqm": 420,
+    "units": 6,
+    "floors": 4,
+    "elevator": false,
+    "occupied_during_works": true,
+    "building_year": 1962,
+    "denkmalschutz": false
+  },
+  "scope": {
+    "description": "Komplette Elektroinstallation inkl. Zählerschrank",
+    "positions": [
+      {"item": "Zählerschrank erneuern", "qty": 1, "unit": "Stk"},
+      {"item": "Steckdosen setzen", "qty": 96, "unit": "Stk"},
+      {"item": "Leitungen NYM 3x1,5", "qty": 1800, "unit": "m"}
+    ],
+    "leistungsverzeichnis_ref": "LV-2026-0714.pdf"
+  },
+  "constraints": {
+    "start_date": "2026-09-15",
+    "completion_deadline": "2026-11-30",
+    "site_access": "Innenhof, 3,5t Beschränkung",
+    "contract_basis": "VOB/B"
+  },
+  "required_line_items": [
+    "anfahrt", "geruest_oder_hebebuehne", "entsorgung",
+    "dokumentation_und_abnahmeprotokoll", "nachtragsregelung"
+  ],
+  "excluded_check": ["bauseits", "optional", "auf Nachweis"]
+}
+```
+
+### 5.2 Document intake path
+The user uploads what they already have: a Leistungsverzeichnis (bill of quantities), a floor plan PDF, or a competitor's existing quote. Parse it into the exact same JSON. This is the required "at least one document type" and it is easy to demo convincingly because construction documents are highly structured. Best demo choice: upload one existing quote, extract the scope from it, then call three other companies with that identical scope. The story writes itself.
+
+### 5.3 What the agent must extract from every call
+Total price net, VAT handling, unit prices per position, travel and setup cost, scaffolding, disposal, whether it is a fixed price (Pauschalpreis) or unit price contract (Einheitspreisvertrag), the surcharge rate for Nachträge (change orders), payment terms, warranty period, earliest start date, and every position marked "bauseits".
+
+The single highest-value question in this vertical, ask it in every call: **"Welche Positionen sind in Ihrem Angebot NICHT enthalten?"** Most price differences hide in the answer.
+
+### 5.4 Negotiation levers
+- Competing bid: "Mir liegt ein verbindliches Angebot über 42.800 Euro netto vor, das Gerüst und Entsorgung einschließt. Können Sie das unterbieten?"
+- Convert unit prices into a fixed price to kill change orders
+- Bundle several trades or several buildings with the same client
+- Offer schedule flexibility (off-peak start date) in exchange for price
+- Payment terms: faster payment against discount (Skonto), which costs the buyer nothing if they were going to pay anyway
+
+### 5.5 Three counterparty styles to build
+1. **Der Nachtrags-Lowballer**: quotes 20 percent under everyone, has excluded scaffolding, disposal and the Zählerschrank, and plans to invoice them later as Nachträge
+2. **Der Ausgelastete**: fully booked, says "Rufen Sie im Herbst nochmal an", quotes a deterrent price. The agent's job is to convert this into a documented decline or a callback commitment with a date, never a vague answer
+3. **Der Meister mit Prinzipien**: refuses to price on the phone, insists on a site visit. The agent must extract a price range and a firm site-visit slot, and log it as a structured outcome
+
+### 5.6 Red flags in config
+- Quote more than 30 percent below the median of collected quotes
+- Any of the mandatory line items missing
+- The word "bauseits" appearing anywhere without an explicit cost estimate
+- No fixed price and no defined change order rate
+- No stated warranty period (Gewährleistung, normally 4 or 5 years under VOB/BGB)
+
+---
+
+## 6. Vertical B config: Tech Repair
+
+### 6.1 Job spec (JSON)
+
+```json
+{
+  "vertical": "tech_repair",
+  "segment": "industrial_electronics",
+  "device": {
+    "category": "Frequenzumrichter",
+    "manufacturer": "SEW Eurodrive",
+    "type_designation": "MOVIDRIVE MDX61B0055-5A3-4-00",
+    "serial": "01.8347291",
+    "power_kw": 5.5,
+    "year": 2011,
+    "manufacturer_support": "abgekündigt"
+  },
+  "fault": {
+    "symptom": "Fehlercode F04, kein Anlauf, Zwischenkreis lädt nicht",
+    "when_occurs": "sofort beim Einschalten",
+    "visible_damage": "Elko sichtbar aufgebläht",
+    "operating_hours": 41000,
+    "environment": "staubig, Umgebungstemperatur bis 45 C"
+  },
+  "commercial": {
+    "replacement_cost_new": 4800,
+    "downtime_cost_per_hour": 1200,
+    "spare_unit_available": false,
+    "urgency": "Produktion steht"
+  },
+  "required_line_items": [
+    "diagnosekosten", "diagnosekosten_bei_nicht_reparatur",
+    "reparaturpreis_fest_oder_geschaetzt", "ersatzteilkosten",
+    "hin_und_rueckversand", "durchlaufzeit_werktage",
+    "expresszuschlag", "gewaehrleistung_monate", "leihgeraet_verfuegbar"
+  ]
+}
+```
+
+### 6.2 Document intake path
+Upload a photo of the type plate (Typenschild). This is the strongest document demo in either vertical: one phone photo, and a vision model extracts manufacturer, type designation, serial and power rating into the JSON. Second option: upload the machine's fault log or a previous repair invoice.
+
+### 6.3 What the agent must extract
+Diagnosis fee and whether it is waived if the repair goes ahead, what happens to the fee if the unit is unrepairable, fixed price or estimate, turnaround in working days, express surcharge, warranty length on the repair, whether a loan unit or exchange unit is available, shipping both ways, and whether they can source obsolete components.
+
+The single highest-value question here: **"Was kostet die Diagnose, wenn ich die Reparatur danach nicht beauftrage?"** That is where the hidden money is.
+
+### 6.4 Negotiation levers
+- Downtime leverage: turnaround is worth more than unit price, and the agent should trade one against the other explicitly ("Ich nehme Ihren höheren Preis, wenn Sie in 48 Stunden liefern")
+- Competing quote on turnaround, not just on price
+- Waive the diagnosis fee against a commitment to order
+- Exchange unit instead of repair to cut downtime
+- Volume signal: "Wir haben acht baugleiche Umrichter im Werk" is true leverage and legitimate, as long as it is true
+- Ask for warranty extension instead of a discount when the provider will not move on price
+
+### 6.5 Three counterparty styles to build
+1. **Der Diagnose-Kassierer**: cheap headline repair price, 180 euro diagnosis fee that is non-refundable and not mentioned unless asked
+2. **Der Express-Upseller**: normal turnaround 10 days, pushes a 40 percent express surcharge, will drop it under competitive pressure
+3. **Der Ausweicher**: "Das müssen wir erst sehen, schicken Sie es ein." The agent must extract a price band, the diagnosis terms, and a written estimate commitment with a deadline before it agrees to ship anything
+
+### 6.6 Red flags in config
+- Repair price above roughly 60 percent of replacement cost with no warranty advantage
+- Diagnosis fee not refundable and not disclosed until asked
+- No stated turnaround in working days
+- Warranty shorter than 6 months
+- Refusal to state whether the fault is board-level repairable or requires an unobtainable part
+
+---
+
+## 7. The conversation requirements, answered explicitly
+
+The brief asks for four points to be addressed on stage. Prepare one slide and one call clip for each.
+
+**Who is the agent speaking for.** Opening line, always, unprompted:
+> "Guten Tag, mein Name ist Alex, ich bin ein KI-Assistent und hole im Auftrag von Architekturbüro Vetrov Angebote für ein Sanierungsprojekt in Dresden ein. Haben Sie zwei Minuten?"
+
+If asked "Bin ich mit einem Roboter verbunden?" the answer is short, honest, and moves on without apologising:
+> "Ja, ich bin ein KI-Assistent, ich rufe im Auftrag eines Kunden an. Wenn Sie lieber direkt mit ihm sprechen, verbinde ich gerne. Ansonsten: haben Sie die Kapazität für ein Projekt im September?"
+
+Note for the German market: this is not just good manners. The EU AI Act transparency obligation (Art. 50) requires that people know they are interacting with an AI. Put that on the slide, it separates you from teams that treat disclosure as a UX detail.
+
+**How it survives friction.** Build and demo: interruption handling (barge-in), the "Ich bin auf der Baustelle, rufen Sie später an" deflection converted into a scheduled callback with a concrete time, the receptionist gatekeeper, and the outright hangup logged as a structured decline. Latency target under 700 ms to first token, because a pause on a construction site phone call reads as a bad connection and gets you hung up on.
+
+**Where the honesty line sits.** Hard constraints, implemented as tool-level validation and stated on a slide:
+- The agent may only cite a competing quote that exists in the collected quote store, with a call ID and a transcript timestamp
+- The agent may never invent scope, quantities, volume or urgency
+- The agent may never claim to be a human
+- The agent may never promise an order it is not authorised to place
+Implementation detail worth showing: the leverage string is not generated by the LLM, it is templated from a verified record. The model chooses when to use leverage, not what the leverage says.
+
+**How every call ends.** Three permitted terminal states, nothing else: itemised quote captured, callback commitment with a date and time, or documented decline with a reason. The report shows the terminal state for every call including the failures. Showing your failures is explicitly rewarded by the brief.
+
+---
+
+## 8. Demo storyboard (7 minutes)
+
+| Time | What happens |
+|---|---|
+| 0:00 | The problem in one sentence, with the 9-week waiting time number and the "17 percent wait more than a month for a quote" number |
+| 0:45 | Voice intake, live. Architect describes an electrical package. Agent asks estimator-grade questions. JSON appears on screen as it fills |
+| 1:45 | Document intake: drop in an existing quote PDF, same JSON is produced. Show the diff, they match. User confirms the spec |
+| 2:15 | Fire four parallel calls. Show the live board: four call cards, status, extracted line items appearing in real time |
+| 3:15 | Play 40 seconds of the Nachtrags-Lowballer call, the moment the agent asks what is NOT included, and the price effectively changes |
+| 4:00 | Round two: agent calls back the second-cheapest with verified leverage. **Price moves live.** This is the moment the challenge is won |
+| 4:45 | Ranked report: four quotes, normalised, fees itemised, red flag on the cheapest, recommendation in plain language with transcript citations |
+| 5:15 | Swap the config file on screen. Same agent, tech repair. Photo of a type plate, one call, extract diagnosis fee trap |
+| 6:15 | Honesty and disclosure slide, the four conversation requirements, the failure cases |
+| 6:45 | Market: buyer-side incentive alignment, why this generalises to every phone-priced market |
+
+Record everything in advance as backup video. Live calls fail at hackathons, and a jury forgives a recording far more easily than it forgives dead air.
+
+---
+
+## 9. Mapping to the official success criteria
+
+| Requirement from the brief | How it is met |
+|---|---|
+| Loop closed end to end, single vertical | Bau electrical package runs intake to ranked recommendation |
+| One job spec via voice interview and at least one document type, user-confirmed, reused verbatim | Voice interview plus LV/quote PDF for Bau, plus type plate photo for Tech Repair |
+| Live calls against at least three distinct negotiation styles, fees itemised | Three counterparty agents per vertical, listed in sections 5.5 and 6.5 |
+| At least one negotiation where price or terms measurably change due to gathered leverage | Round-two callback with verified competing quote, timestamped in the transcript |
+| AI disclosure and honesty constraints hold | Disclosure in the opening line, templated leverage strings, tool-level validation |
+| Every call ends in a structured outcome | Three permitted terminal states, failures shown in the report |
+| Final report ranks all quotes, cites transcripts, explains in plain language | Report view with normalisation, red flags and citations |
+| Vertical parameters as configuration, not code | Live config swap on stage |
+
+---
+
+## 10. Legal and compliance notes for Germany
+
+- **UWG paragraph 7 does not block you.** The prohibition on cold calling covers advertising calls: businesses calling consumers without express consent, or other market participants without presumed consent. Your agent is on the demand side, asking for a quote as a customer. A business that publishes a phone number expects quote requests. This distinction matters if a juror or a pilot customer raises it, and it changes only if you later start calling companies to sell them your own product.
+- **AI Act Art. 50 transparency**: disclose that the caller is an AI. Build it in, do not hide it.
+- **Call recording**: recording a conversation without consent is a criminal offence in Germany (StGB paragraph 201). Default to transcripts plus structured extraction, and only store audio with explicit consent obtained at the start of the call. Say this on the compliance slide, it is a credibility win.
+- **Data**: keep the job spec free of personal data beyond what is needed. Provider names and phone numbers are business contact data, which is the easier category.
+
+---
+
+## 11. Build checklist
+
+**Must have**
+- [ ] ElevenLabs Agent: intake interviewer, per-vertical question list from config
+- [ ] Document parser to the same JSON schema (vision model for the type plate, PDF parse for the LV)
+- [ ] Spec confirmation UI, nothing calls out before the user confirms
+- [ ] Call orchestrator with parallel sessions, Twilio or SIP
+- [ ] Mid-call tool: `log_quote_line_item(call_id, item, amount, included: bool)`
+- [ ] Mid-call tool: `get_leverage(job_id)` returning only verified competing quotes
+- [ ] Three counterparty agents per vertical with distinct pricing strategies
+- [ ] Terminal-state classifier: quote, callback, decline
+- [ ] Ranking and normalisation engine, applying the red-flag rules from config
+- [ ] Report view with transcript citations
+
+**Should have**
+- [ ] Call list built programmatically from Google Places for a real city and trade
+- [ ] Golden call eval set: does the agent extract every mandatory line item, does it catch the 30-percent red flag
+- [ ] Live config swap demo
+
+**Nice to have**
+- [ ] Savings calculation shown as the business model (percentage of verified savings)
+- [ ] German and English agent voices, switchable
+
+---
+
+## 12. Business model slide
+
+Existing German platforms in both markets monetise the supplier: lead fees of roughly 50 to 120 euro per contact request on craft portals, or 10 to 15 percent commission models. The supplier pays whether or not the job happens, which is why suppliers price the fee back into the quote and why nobody negotiates on the buyer's behalf.
+
+Ours: the buyer pays, either a flat fee per negotiation report or a share of verified savings. In Bau, a package where the negotiated result is 4,000 euro below the median of collected quotes supports a fee in the several-hundred-euro range and still leaves the buyer clearly ahead. In Tech Repair, the recurring nature matters more than the ticket: a maintenance department runs this several times a month, which makes it a subscription rather than a transaction.
+
+One line for the jury: **we are the first party in this market whose incentive is aligned with the person paying the bill.**
+
+---
+
+## 13. Sources
+
+- Destatis, Handwerk structural data 2024: around 564,000 craft enterprises, roughly 762 billion euro revenue
+- ZDH, Kennzahlen des Handwerks and economic reports: waiting times of about 9.1 weeks overall and 13.4 weeks in construction trades
+- Gelbe Seiten study via presseportal.de: a quarter consider response times too slow, 17 percent wait more than a month for a quote
+- Verbraucherzentrale analysis of over 2,000 heat pump offers, reported by reduco.ai: up to 300 percent price differences for structurally identical houses, commonly missing positions
+- kostenfinder.com and containerhelfer.de on asbestos remediation: regional cost swings of 20 to 40 percent, TRGS 519 obligations
+- RGB Elektronika: free repair estimate within 7 working days, 24-hour estimate for an extra 110 euro
+- retrofit GmbH, ASM Elektronik, ASERTI, Mosertronik: industrial electronics repair scope and quote-only pricing
+- elektro.net: Sonepar and Unis Group industrial repair service covering PLCs, servo controls, HMI panels, CNC controls, drives, robot electronics
+- Craft portal fee structures: my-hammer.de and third-party reviews on contact fees of roughly 50 to 120 euro per request, Check24 commission models
+- UWG paragraph 7 interpretation: dr-datenschutz.de, keyed.de, omsels.info
+
+Figures without a named source are marked as estimates in context. All market data is German unless stated otherwise.
