@@ -301,6 +301,13 @@ async function main() {
     console.error("ELEVENLABS_API_KEY is not set (put it in .env.local)");
     process.exit(1);
   }
+  // In CI this script must only UPDATE the two known agents. Creating agents
+  // there would silently mint a new agent on every push if an ID secret is
+  // missing, and nobody would see the printed IDs.
+  if (process.env.CI && !(process.env.ELEVENLABS_INTAKE_AGENT_ID && process.env.ELEVENLABS_BUYER_AGENT_ID)) {
+    console.error("CI run refused: ELEVENLABS_INTAKE_AGENT_ID and ELEVENLABS_BUYER_AGENT_ID must both be set as secrets.");
+    process.exit(1);
+  }
   const intake = await upsertAgent(process.env.ELEVENLABS_INTAKE_AGENT_ID, intakeAgent);
   console.log(`${intake.action} intake agent: ${intake.id}`);
   const buyer = await upsertAgent(process.env.ELEVENLABS_BUYER_AGENT_ID, buildBuyerAgent());

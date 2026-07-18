@@ -9,6 +9,8 @@ const callSchema = new mongoose.Schema(
     round: { type: Number, enum: [1, 2], default: 1 },
     mode: { type: String, enum: ["sim", "roleplay", "real"], default: "sim" },
     phone: { type: String }, // real calls: the business number dialed
+    placeId: { type: String }, // Google Places id of the business (links out)
+    rating: { type: Number }, // Google rating at discovery time
     batch: { type: Number }, // 1-based batch index for server-driven batch calls
     pricingJitter: { type: Number, default: 1 }, // per-vendor scale on the policy card's prices
     status: {

@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
+import { ExternalLink, Star } from "lucide-react";
 import { toast } from "sonner";
 import TranscriptView from "@/components/calls/TranscriptView";
 
@@ -245,10 +246,36 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
     failed: <span className="badge badge-error">failed</span>,
   }[displayStatus] || <span className="badge badge-info">{displayStatus}</span>;
 
+  // Real Places businesses link out to their Google listing; canned/sim-only
+  // vendors have no listing to link to.
+  const googleUrl =
+    call.placeId && !call.placeId.startsWith("canned")
+      ? `https://www.google.com/maps/place/?q=place_id:${call.placeId}`
+      : null;
+
   return (
     <div className="card flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-display text-sm font-semibold text-foreground">{call.vendorName}</h3>
+        {googleUrl ? (
+          <a
+            href={googleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open this business on Google"
+            className="focus-ring inline-flex items-center gap-1 font-display text-sm font-semibold text-foreground hover:text-primary-500 hover:underline"
+          >
+            {call.vendorName}
+            <ExternalLink aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
+          </a>
+        ) : (
+          <h3 className="font-display text-sm font-semibold text-foreground">{call.vendorName}</h3>
+        )}
+        {call.rating != null && (
+          <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+            <Star aria-hidden="true" className="h-3 w-3 fill-warning-400 text-warning-400" />
+            {call.rating}
+          </span>
+        )}
         <span className={`badge ${call.round === 2 ? "badge-warning" : "badge-info"}`}>
           Round {call.round}
         </span>

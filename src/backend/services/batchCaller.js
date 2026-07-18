@@ -1,19 +1,18 @@
-// Server-side batch calling: the buyer is an Anthropic tool-using loop, the
-// vendor is the existing policy-card persona (vendorBrain). Batches run
-// sequentially; within a batch calls run concurrently. From batch 2 on, the
-// buyer carries the best committed quote so far as leverage (real quotes only,
-// same honesty guardrail as the voice path).
+// Server-side batch calling: the buyer is an LLM tool-using loop (provider via
+// llm.js: OpenAI by default, Anthropic fallback), the vendor is the existing
+// policy-card persona (vendorBrain). Batches run sequentially; within a batch
+// calls run concurrently. From batch 2 on, the buyer carries the best
+// committed quote so far as leverage (real quotes only, same honesty
+// guardrail as the voice path).
 
-import Anthropic from "@anthropic-ai/sdk";
 import Call from "@/backend/models/call";
 import Job from "@/backend/models/job";
 import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
+import { completeWithTools } from "@/backend/services/llm";
 import { nextVendorTurn } from "@/backend/services/vendorBrain";
 import { addQuoteLine, commitQuote } from "@/backend/services/quoteOps";
 import { discoverVendors } from "@/backend/services/vendorDiscovery";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const MAX_BUYER_TURNS = 24; // hard stop per call
 
@@ -21,7 +20,7 @@ const BUYER_TOOLS = [
 	{
 		name: "log_quote_item",
 		description: "Record one itemised fee line the vendor just stated.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				fee_key: { type: "string" },
@@ -36,7 +35,7 @@ const BUYER_TOOLS = [
 		name: "commit_quote",
 		description:
 			"Commit the vendor's final quote. Returns the recomputed total and any red flags — react to them before ending the call.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				total: { type: "number" },
@@ -49,7 +48,7 @@ const BUYER_TOOLS = [
 	{
 		name: "record_negotiation_event",
 		description: "Record a price movement caused by a negotiation lever.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				lever_id: { type: "string" },
@@ -63,7 +62,7 @@ const BUYER_TOOLS = [
 	{
 		name: "log_outcome",
 		description: "Record how the call ended when there is no committed quote.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				type: { type: "string", enum: ["callback", "declined"] },
@@ -154,25 +153,22 @@ export const runCall = async (callId) => {
 	await pushTurn("vendor", greeting);
 
 	const system = buyerSystem({ job, vertical, call, leverage, priorQuote });
-	const messages = [{ role: "user", content: greeting }];
+	const history = [{ role: "user", text: greeting }];
 	let itemisationNudged = false;
 
 	try {
 		for (let i = 0; i < MAX_BUYER_TURNS; i++) {
-			const response = await anthropic.messages.create({
-				model: "claude-sonnet-5",
-				max_tokens: 600,
-				thinking: { type: "disabled" },
+			const { text, toolCalls: toolUses } = await completeWithTools({
 				system,
+				history,
 				tools: BUYER_TOOLS,
-				messages,
+				maxTokens: 600,
+				tier: "fast",
 			});
 
-			const text = response.content.find((b) => b.type === "text")?.text?.trim();
-			const toolUses = response.content.filter((b) => b.type === "tool_use");
 			let turnRef = call.transcript.length - 1;
 			if (text) turnRef = await pushTurn("agent", text);
-			messages.push({ role: "assistant", content: response.content });
+			history.push({ role: "assistant", text, toolCalls: toolUses });
 
 			if (toolUses.length) {
 				const results = [];
@@ -220,12 +216,12 @@ export const runCall = async (callId) => {
 						result = { ok: true };
 					}
 					results.push({
-						type: "tool_result",
-						tool_use_id: tu.id,
+						id: tu.id,
+						name: tu.name,
 						content: JSON.stringify(result || {}),
 					});
 				}
-				messages.push({ role: "user", content: results });
+				history.push({ role: "toolResults", results });
 				continue; // let the buyer react to tool results before the vendor speaks
 			}
 
@@ -236,7 +232,7 @@ export const runCall = async (callId) => {
 			if (!text) break;
 			const vendor = await nextVendorTurn({ call, job, vertical, card, lastAgentText: text });
 			await pushTurn("vendor", vendor.text);
-			messages.push({ role: "user", content: vendor.text });
+			history.push({ role: "user", text: vendor.text });
 		}
 
 		if (!call.outcome?.type) {
@@ -267,6 +263,9 @@ export const createBatchCalls = async (job, { total = 20, batchSize = 5, locatio
 			jobId: job._id,
 			specVersion: job.specVersion,
 			vendorName: name,
+			phone: vendor.phone,
+			placeId: vendor.placeId,
+			rating: vendor.rating,
 			policyCardId: cards[i % cards.length].id,
 			round: 1,
 			mode: "sim",

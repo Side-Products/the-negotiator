@@ -116,6 +116,8 @@ export const startRealCalls = async (job, { limit = 3, location } = {}) => {
 			specVersion: job.specVersion,
 			vendorName: v.name,
 			phone: v.phone,
+			placeId: v.placeId,
+			rating: v.rating,
 			policyCardId: null,
 			round: 1,
 			mode: "real",

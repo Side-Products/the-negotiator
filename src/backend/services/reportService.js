@@ -1,10 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import Job from "@/backend/models/job";
 import Call from "@/backend/models/call";
 import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { complete } from "@/backend/services/llm";
 
 const hasFlag = (quote, flagId) => (quote.redFlags || []).some((f) => f.id === flagId);
 
@@ -66,10 +64,9 @@ export const generateReport = async (jobId) => {
     };
   });
 
-  const response = await anthropic.messages.create({
-    model: "claude-opus-4-8",
-    max_tokens: 8000,
-    thinking: { type: "adaptive" },
+  const narrative = await complete({
+    tier: "smart",
+    maxTokens: 8000,
     system: `You write plain-language buyer reports comparing vendor quotes gathered by phone.
 
 RULES
@@ -81,7 +78,7 @@ RULES
     messages: [
       {
         role: "user",
-        content: `Job spec: ${JSON.stringify(job.spec)}
+        text: `Job spec: ${JSON.stringify(job.spec)}
 
 Recommended quoteId: ${recommended?._id?.toString() || "none"}
 
@@ -92,8 +89,6 @@ Write the report narrative.`,
       },
     ],
   });
-
-  const narrative = response.content.find((b) => b.type === "text")?.text?.trim() || "";
 
   const report = {
     ranking,

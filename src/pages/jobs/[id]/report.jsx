@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ChevronDown, ShieldCheck, Lock, BarChart3, ArrowLeft } from "lucide-react";
+import { ChevronDown, ShieldCheck, Lock, BarChart3, ArrowLeft, ExternalLink } from "lucide-react";
 import { getVertical } from "@/config/verticals";
 import { Loader } from "@/components/ui/Loader";
 import RankingTable from "@/components/report/RankingTable";
@@ -261,6 +261,20 @@ export default function ReportPage() {
 
               {open && (
                 <div className="space-y-6 border-t border-border px-5 py-5">
+                  {call.placeId && !call.placeId.startsWith("canned") && (
+                    <a
+                      href={`https://www.google.com/maps/place/?q=place_id:${call.placeId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="focus-ring inline-flex items-center gap-1.5 text-sm text-primary-500 hover:underline"
+                    >
+                      <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                      View {call.vendorName} on Google
+                      {call.rating != null && (
+                        <span className="text-muted-foreground">· ★ {call.rating}</span>
+                      )}
+                    </a>
+                  )}
                   {delta && (
                     <span className="badge badge-success text-sm">
                       was {fmt(delta.before)} → {fmt(delta.after)} after citing a competing bid
