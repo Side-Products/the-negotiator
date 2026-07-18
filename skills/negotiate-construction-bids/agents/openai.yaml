@@ -1,0 +1,4 @@
+interface:
+  display_name: "Construction Bid Negotiator"
+  short_description: "Negotiate comparable subcontractor bids"
+  default_prompt: "Use $negotiate-construction-bids to turn this construction scope into comparable subcontractor quotes and negotiate the best complete terms."
