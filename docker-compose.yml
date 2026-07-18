@@ -1,0 +1,42 @@
+services:
+    web:
+        container_name: the-negotiator-app
+        build:
+            context: ./
+            dockerfile: Dockerfile
+        ports:
+            - "3001:3001"
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "50m"
+                max-file: "5"
+        environment:
+            NODE_ENV: production
+            PORT: 3001
+        env_file:
+            - .env.production
+        restart: unless-stopped
+        volumes:
+            # Named volume so locally stored call recordings (the Wasabi
+            # fallback) survive image rebuilds. Initialized from the image
+            # directory, so it keeps the nextjs user's ownership.
+            - recordings:/usr/src/app/public/recordings
+        healthcheck:
+            # Node's global fetch instead of curl: keeps the slim image free
+            # of an apt-get layer.
+            test:
+                [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://localhost:3001/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+
+volumes:
+    recordings:
+        driver: local

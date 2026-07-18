@@ -31,7 +31,41 @@ function clientTool(name, description, properties, required) {
   return tool;
 }
 
+// Webhook variant for real phone calls: no browser on the line, so the tool
+// executes from ElevenLabs' side against our public API. {{call_id}} in the
+// URL is resolved from the conversation's dynamic variables (set server-side),
+// so the LLM cannot route a tool call to a different call's records.
+function webhookTool(name, description, { method = "POST", path, properties, required }) {
+  const tool = {
+    type: "webhook",
+    name,
+    description,
+    response_timeout_secs: 20,
+    api_schema: {
+      url: `${(process.env.PUBLIC_URL || "").replace(/\/$/, "")}${path}`,
+      method,
+    },
+  };
+  if (properties) {
+    tool.api_schema.request_body_schema = {
+      type: "object",
+      properties,
+      required: required || [],
+    };
+  }
+  return tool;
+}
+
 const INTAKE_PROMPT = `You are an intake interviewer for "{{vertical_label}}" jobs. Your only goal is to build one complete, confirmed job spec so the customer never has to repeat themselves to any vendor.
+
+TODAY'S DATE: {{today_date}}. If asked what today is, answer directly. Convert relative dates ("tomorrow", "next Saturday") into concrete calendar dates using it before saving.
+
+HOW YOU TALK (this is a phone conversation, not a script):
+- Sound like a calm, competent human assistant. Contractions, plain words, short sentences.
+- One thought per turn: most replies are one or two sentences plus a single question.
+- No salesy filler — never say things like "That's a great question!" or "Let's get you moving fast!". Avoid exclamation marks.
+- When the user asks you something, answer it directly FIRST, then return to the interview. If you genuinely don't know (vendor availability, market prices), say so plainly in one sentence — never spin a non-answer into a pitch.
+- No pressure tactics. You collect details; you don't sell.
 
 FIELD TAXONOMY (the fields you must fill, with types and suggested phrasings):
 {{taxonomy_json}}
@@ -53,6 +87,8 @@ RULES:
 - After confirm_spec succeeds, thank the user, tell them the calls will start shortly, and use end_call to hang up.`;
 
 const BUYER_PROMPT = `You are a professional purchasing assistant on a phone call with the vendor "{{vendor_name}}", calling on behalf of a real customer. This is round {{round}} of quoting.
+
+TODAY'S DATE: {{today_date}}. Use it to state the job date concretely and to interpret validity dates the vendor gives you.
 
 THE JOB (fixed — this is exactly what the customer needs):
 {{job_spec_json}}
@@ -124,67 +160,99 @@ const intakeAgent = {
   },
 };
 
-const buyerAgent = {
-  name: "The Negotiator — Buyer",
-  conversation_config: {
-    agent: {
-      first_message:
-        "Hi there — I'm calling on behalf of a customer to get a quote for a job. Do you have a couple of minutes?",
-      prompt: {
-        prompt: BUYER_PROMPT,
-        llm: "claude-sonnet-4-6",
-        tools: [
-          clientTool(
-            "log_quote_item",
-            "Record one itemised fee line the vendor just stated. Call every time a price component is mentioned.",
-            {
-              fee_key: str("The fee taxonomy key this line maps to (from the fee taxonomy list)."),
-              label: str("Short human label for the line, e.g. 'Truck & travel'."),
-              amount: num("Dollar amount of this line."),
-              note: str("Optional context, e.g. 'revealed only after being pressed twice'."),
-            },
-            ["fee_key", "label", "amount"],
-          ),
-          clientTool(
-            "commit_quote",
-            "Commit the vendor's final quote. Returns the recomputed total and any red flags — react to them on the call before hanging up.",
-            {
-              total: num("The all-in total the vendor stated."),
-              guaranteed: bool("Whether the vendor will guarantee the total in writing (not-to-exceed)."),
-              valid_until: str("Optional date the quote is valid until, if the vendor gave one."),
-            },
-            ["total", "guaranteed"],
-          ),
-          clientTool(
-            "record_negotiation_event",
-            "Record a price movement caused by a negotiation lever. Call when the vendor changes their total in response to leverage.",
-            {
-              lever_id: str("The id of the lever used (from the levers list)."),
-              before_total: num("The vendor's total before the lever was applied."),
-              after_total: num("The vendor's total after they moved."),
-              note: str("Optional one-line description of what happened."),
-            },
-            ["lever_id", "before_total", "after_total"],
-          ),
-          clientTool(
-            "log_outcome",
-            "Record how the call ended when there is no committed quote. Every call must end with commit_quote or this.",
-            {
-              type: str("How the call ended.", { enum: ["callback", "declined"] }),
-              note: str("Optional one-line context, e.g. 'asked to call back tomorrow morning'."),
-            },
-            ["type"],
-          ),
-          clientTool(
-            "get_leverage",
-            "Fetch the competing bids you are allowed to reference. Returns an empty list if you have none — in that case you must not imply any competing bid exists.",
-          ),
-          { type: "system", name: "end_call" },
-        ],
+// The five buyer tool definitions, buildable as client tools (browser sessions)
+// or webhook tools (real phone calls hitting our public API). PUBLIC_URL set =
+// webhook mode; both agree on names and argument shapes.
+function buildBuyerTools() {
+  const defs = [
+    {
+      name: "log_quote_item",
+      description:
+        "Record one itemised fee line the vendor just stated. Call every time a price component is mentioned.",
+      path: "/api/calls/{{call_id}}/quote-items",
+      properties: {
+        fee_key: str("The fee taxonomy key this line maps to (from the fee taxonomy list)."),
+        label: str("Short human label for the line, e.g. 'Truck & travel'."),
+        amount: num("Dollar amount of this line."),
+        note: str("Optional context, e.g. 'revealed only after being pressed twice'."),
+      },
+      required: ["fee_key", "label", "amount"],
+    },
+    {
+      name: "commit_quote",
+      description:
+        "Commit the vendor's final quote. Returns the recomputed total and any red flags — react to them on the call before hanging up.",
+      path: "/api/calls/{{call_id}}/commit",
+      properties: {
+        total: num("The all-in total the vendor stated."),
+        guaranteed: bool("Whether the vendor will guarantee the total in writing (not-to-exceed)."),
+        valid_until: str("Optional date the quote is valid until, if the vendor gave one."),
+      },
+      required: ["total", "guaranteed"],
+    },
+    {
+      name: "record_negotiation_event",
+      description:
+        "Record a price movement caused by a negotiation lever. Call when the vendor changes their total in response to leverage.",
+      path: "/api/calls/{{call_id}}/negotiation-event",
+      properties: {
+        lever_id: str("The id of the lever used (from the levers list)."),
+        before_total: num("The vendor's total before the lever was applied."),
+        after_total: num("The vendor's total after they moved."),
+        note: str("Optional one-line description of what happened."),
+      },
+      required: ["lever_id", "before_total", "after_total"],
+    },
+    {
+      name: "log_outcome",
+      description:
+        "Record how the call ended when there is no committed quote. Every call must end with commit_quote or this.",
+      path: "/api/calls/{{call_id}}/outcome",
+      properties: {
+        type: str("How the call ended.", { enum: ["callback", "declined"] }),
+        note: str("Optional one-line context, e.g. 'asked to call back tomorrow morning'."),
+      },
+      required: ["type"],
+    },
+    {
+      name: "get_leverage",
+      description:
+        "Fetch the competing bids you are allowed to reference. Returns an empty list if you have none — in that case you must not imply any competing bid exists.",
+      path: "/api/calls/{{call_id}}/leverage",
+      method: "GET",
+    },
+  ];
+
+  const tools = process.env.PUBLIC_URL
+    ? defs.map((d) =>
+        webhookTool(d.name, d.description, {
+          method: d.method || "POST",
+          path: d.path,
+          properties: d.properties,
+          required: d.required,
+        }),
+      )
+    : defs.map((d) => clientTool(d.name, d.description, d.properties, d.required));
+  tools.push({ type: "system", name: "end_call" });
+  return tools;
+}
+
+function buildBuyerAgent() {
+  return {
+    name: "The Negotiator — Buyer",
+    conversation_config: {
+      agent: {
+        first_message:
+          "Hi there — I'm calling on behalf of a customer to get a quote for a job. {{recording_note}}Do you have a couple of minutes?",
+        prompt: {
+          prompt: BUYER_PROMPT,
+          llm: "claude-sonnet-4-6",
+          tools: buildBuyerTools(),
+        },
       },
     },
-  },
-};
+  };
+}
 
 async function createAgent(payload) {
   const res = await fetch("https://api.elevenlabs.io/v1/convai/agents/create", {
@@ -202,19 +270,51 @@ async function createAgent(payload) {
   return data.agent_id;
 }
 
+// Update in place when the agent already exists — keeps the same agent id, so
+// .env.local and the running dev server stay untouched.
+async function updateAgent(agentId, payload) {
+  const res = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
+    method: "PATCH",
+    headers: {
+      "xi-api-key": process.env.ELEVENLABS_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update "${payload.name}": ${res.status} ${await res.text()}`);
+  }
+  return agentId;
+}
+
+async function upsertAgent(existingId, payload) {
+  if (existingId) {
+    await updateAgent(existingId, payload);
+    return { id: existingId, action: "Updated" };
+  }
+  return { id: await createAgent(payload), action: "Created" };
+}
+
 async function main() {
   loadEnv();
   if (!process.env.ELEVENLABS_API_KEY) {
     console.error("ELEVENLABS_API_KEY is not set (put it in .env.local)");
     process.exit(1);
   }
-  const intakeId = await createAgent(intakeAgent);
-  console.log(`Created intake agent: ${intakeId}`);
-  const buyerId = await createAgent(buyerAgent);
-  console.log(`Created buyer agent:  ${buyerId}`);
-  console.log("\nAdd to .env.local:\n");
-  console.log(`ELEVENLABS_INTAKE_AGENT_ID=${intakeId}`);
-  console.log(`ELEVENLABS_BUYER_AGENT_ID=${buyerId}`);
+  const intake = await upsertAgent(process.env.ELEVENLABS_INTAKE_AGENT_ID, intakeAgent);
+  console.log(`${intake.action} intake agent: ${intake.id}`);
+  const buyer = await upsertAgent(process.env.ELEVENLABS_BUYER_AGENT_ID, buildBuyerAgent());
+  console.log(`${buyer.action} buyer agent:  ${buyer.id}`);
+  console.log(
+    process.env.PUBLIC_URL
+      ? `Buyer tools: WEBHOOK mode -> ${process.env.PUBLIC_URL}`
+      : "Buyer tools: CLIENT mode (browser sessions only; set PUBLIC_URL + re-run for real phone calls)",
+  );
+  if (intake.action === "Created" || buyer.action === "Created") {
+    console.log("\nAdd to .env.local:\n");
+    console.log(`ELEVENLABS_INTAKE_AGENT_ID=${intake.id}`);
+    console.log(`ELEVENLABS_BUYER_AGENT_ID=${buyer.id}`);
+  }
 }
 
 main().catch((err) => {

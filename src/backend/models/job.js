@@ -15,6 +15,7 @@ const jobSchema = new mongoose.Schema(
       default: "draft",
     },
     intakeConversationId: { type: String },
+    sourceDocKey: { type: String }, // Wasabi key of the uploaded intake document
     report: {
       ranking: [
         {

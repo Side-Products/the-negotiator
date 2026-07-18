@@ -1,7 +1,9 @@
 node_modules/
 .next/
+.next-build/
 .env
 .env.local
 .env*.local
+.env.production
 public/recordings/
 .DS_Store

@@ -1,6 +1,6 @@
 // Landing page in the HomePixel design language (viraloop): sharp hairline
 // panels, kickers, corner-plus marks, cut-corner buttons, radial washes.
-// Animations are the CSS `.enter` keyframes from globals.css — no motion dep.
+// Animations are the CSS `.enter` keyframes from globals.css (no motion dep).
 
 import { Logo } from "@/components/Logo";
 import { CutButton } from "@/components/ui/CutButton";
@@ -37,17 +37,17 @@ const STEPS = [
   {
     icon: Mic,
     title: "Brief the intake agent",
-    copy: "Talk through your job — or upload the paperwork. The agent turns it into an itemised spec every vendor quotes against.",
+    copy: "Talk through your job, or upload the paperwork. The agent turns it into an itemised spec every vendor quotes against.",
   },
   {
     icon: PhoneCall,
     title: "Calls go out in parallel",
-    copy: "A buyer agent rings each vendor, works through the same spec, and gathers line-item quotes — recorded end to end.",
+    copy: "A buyer agent rings each vendor, works through the same spec, and gathers line-item quotes, recorded end to end.",
   },
   {
     icon: Scale,
     title: "The leverage round",
-    copy: "Armed with committed bids, the agent calls back and haggles, quoting real competitor numbers — never invented ones.",
+    copy: "Armed with committed bids, the agent calls back and haggles, quoting real competitor numbers and never invented ones.",
   },
   {
     icon: FileCheck,
@@ -65,7 +65,7 @@ const FEATURES = [
   {
     icon: TriangleAlert,
     title: "Red flags surfaced",
-    copy: "Vague pricing, pressure tactics, and dodged questions get flagged — with the transcript to prove it.",
+    copy: "Vague pricing, pressure tactics, and dodged questions get flagged, with the transcript to prove it.",
   },
   {
     icon: ShieldCheck,
@@ -79,13 +79,13 @@ const VERTICALS = [
     icon: Truck,
     name: "Moving",
     tag: "Live demo",
-    copy: "Apartment and house moves: crew size, truck, packing, stairs, insurance — quoted line by line.",
+    copy: "Apartment and house moves: crew size, truck, packing, stairs, insurance, all quoted line by line.",
   },
   {
     icon: Car,
     name: "Auto body",
     tag: "Config swap",
-    copy: "Collision repair estimates: parts, labour, paint, OEM vs aftermarket — same engine, new market.",
+    copy: "Collision repair estimates: parts, labour, paint, OEM vs aftermarket. Same engine, new market.",
   },
 ];
 
@@ -147,7 +147,7 @@ export default function Home() {
                 style={{ "--enter-delay": "0ms" }}
               >
                 <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse bg-primary-400" />
-                ElevenLabs &times; Hack-Nation — Global AI Hackathon
+                ElevenLabs &times; Hack-Nation: Global AI Hackathon
               </span>
 
               <h1
@@ -162,7 +162,7 @@ export default function Home() {
                 style={{ "--enter-delay": "160ms" }}
               >
                 Brief an AI buyer once. It phones every vendor in parallel, collects itemised
-                quotes, then calls back and negotiates with competing bids as leverage — every
+                quotes, then calls back and negotiates with competing bids as leverage, every
                 claim backed by a recording.
               </p>
 
@@ -203,7 +203,7 @@ export default function Home() {
             <SectionHeading
               kicker="How it works"
               title="From brief to best price in four steps"
-              sub="Two generic voice agents — an intake interviewer and a buyer — do the calling so you never have to."
+              sub="Two generic voice agents, an intake interviewer and a buyer, do the calling so you never have to."
             />
 
             <div className="relative mt-12 border border-border">
@@ -300,7 +300,7 @@ export default function Home() {
               Put an agent on the phone.
             </h2>
             <p className="mt-5 max-w-xl text-balance text-muted-foreground">
-              Describe the job once — the agents handle the calls, the haggling, and the receipts.
+              Describe the job once. The agents handle the calls, the haggling, and the receipts.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <CutButton size="lg" href="/jobs/new">
@@ -316,7 +316,7 @@ export default function Home() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-3 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:px-8 lg:px-10">
-          <span>ElevenLabs &times; Hack-Nation — The Negotiator</span>
+          <span>ElevenLabs &times; Hack-Nation: The Negotiator</span>
           <span>Built in 24 hours. Negotiates in minutes.</span>
         </div>
       </footer>

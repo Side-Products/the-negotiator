@@ -2,6 +2,9 @@ import dbConnect from "@/lib/dbConnect";
 import Job from "@/backend/models/job";
 import getVertical from "@/config/verticals";
 import { extractSpec } from "@/backend/services/docIntake";
+import { wasabiConfigured, uploadBuffer } from "@/backend/services/wasabiStorage";
+
+const EXT = { "application/pdf": "pdf", "image/png": "png", "image/webp": "webp" };
 
 export const config = { api: { bodyParser: { sizeLimit: "12mb" } } };
 
@@ -41,6 +44,20 @@ export default async function handler(req, res) {
 			job.specSource =
 				job.specSource === "voice" || job.specSource === "both" ? "both" : "doc";
 			await job.save();
+		}
+
+		// Keep the source document as evidence (Wasabi key on the job).
+		if (wasabiConfigured()) {
+			try {
+				const ext = EXT[mediaType] || "jpg";
+				const key = `documents/${job._id}-${Date.now()}.${ext}`;
+				await uploadBuffer(Buffer.from(fileBase64, "base64"), key, mediaType);
+				job.sourceDocKey = key;
+				await job.save();
+			} catch (storeError) {
+				// Evidence storage must never fail the extraction itself.
+				console.error("doc store error:", storeError);
+			}
 		}
 
 		return res.status(200).json({ job });
