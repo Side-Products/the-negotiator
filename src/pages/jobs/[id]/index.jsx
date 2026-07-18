@@ -21,7 +21,7 @@ async function api(url, method = "GET", body) {
 }
 
 function formatValue(value) {
-  if (value === undefined || value === null || value === "") return "—";
+  if (value === undefined || value === null || value === "") return "\u2013";
   if (Array.isArray(value))
     return value
       .map((i) =>
@@ -43,7 +43,7 @@ function SpecCard({ job, vertical }) {
           {vertical?.label || job.vertical} spec
         </h2>
         <span className="badge badge-info">
-          Spec v{job.specVersion || 1} — used verbatim in every call
+          Spec v{job.specVersion || 1}: used verbatim in every call
         </span>
       </div>
       <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
@@ -79,9 +79,9 @@ export default function JobMissionControl() {
 
   const calls = data?.calls || [];
   const quotes = data?.quotes || [];
-  // Poll only while a call is actually live — pending calls change nothing
-  // server-side until a human starts them, and client tools already refetch.
-  const active = calls.some((c) => c.status === "live");
+  // Batches run server-side, so pending calls DO progress without us. Poll
+  // while anything is pending or live.
+  const active = calls.some((c) => c.status === "live" || c.status === "pending");
 
   useEffect(() => {
     if (!active) return;
@@ -97,6 +97,19 @@ export default function JobMissionControl() {
   const hasRound2 = calls.some((c) => c.round === 2);
   const allDone =
     calls.length > 0 && calls.every((c) => c.status === "done" || c.status === "failed");
+
+  // Batch progress + running baseline (best clean committed bid so far).
+  const batchCalls = calls.filter((c) => c.batch);
+  const totalBatches = Math.max(0, ...batchCalls.map((c) => c.batch));
+  const currentBatch = Math.max(0, ...batchCalls.filter((c) => c.status !== "pending").map((c) => c.batch));
+  const doneCount = batchCalls.filter((c) => c.status === "done" || c.status === "failed").length;
+  const cleanCommitted = committedQuotes.filter(
+    (q) => !(q.redFlags || []).some((f) => f.id === "lowball"),
+  );
+  const baseline = cleanCommitted.length
+    ? Math.min(...cleanCommitted.map((q) => q.total))
+    : null;
+  const flaggedCount = committedQuotes.filter((q) => (q.redFlags || []).length > 0).length;
 
   const quoteForCall = (call) =>
     quotes.find((q) => q.callId === call._id && q.committed) ||
@@ -121,7 +134,19 @@ export default function JobMissionControl() {
     }
   };
 
-  const startCalls = run("calls", () => api(`/api/jobs/${id}/calls`, "POST", {}));
+  const startCalls = run("calls", () =>
+    api(`/api/jobs/${id}/batch-calls`, "POST", { total: 20, batchSize: 5 }),
+  );
+  const startRealCalls = run("real", async () => {
+    if (
+      !window.confirm(
+        "This dials 3 real businesses from Google Places, one at a time. The agent discloses it is an AI and that the call is recorded. Continue?",
+      )
+    )
+      return;
+    await api(`/api/jobs/${id}/real-calls`, "POST", { limit: 3 });
+  });
+  const addRolePlay = run("roleplay", () => api(`/api/jobs/${id}/calls`, "POST", { mode: "roleplay" }));
   const negotiate = run("negotiate", () => api(`/api/jobs/${id}/negotiate`, "POST", {}));
   const generateReport = run("report", async () => {
     await api(`/api/jobs/${id}/report`, "POST", {});
@@ -138,11 +163,26 @@ export default function JobMissionControl() {
       <SpecCard job={job} vertical={vertical} />
 
       <div className="flex flex-wrap items-center gap-3">
-        {calls.length === 0 && (
+        {batchCalls.length === 0 && (
           <CutButton onClick={startCalls} disabled={!job.confirmed || busy === "calls"}>
-            {busy === "calls" ? "Starting…" : "Start calls"}
+            {busy === "calls" ? "Dialing the market…" : "Start calls (20 vendors, batches of 5)"}
           </CutButton>
         )}
+        <CutButton
+          variant="outline"
+          onClick={addRolePlay}
+          disabled={!job.confirmed || busy === "roleplay"}
+        >
+          {busy === "roleplay" ? "Adding…" : "+ Live role-play call"}
+        </CutButton>
+        <CutButton
+          variant="outline"
+          onClick={startRealCalls}
+          disabled={!job.confirmed || busy === "real"}
+          title="Requires ELEVENLABS_PHONE_NUMBER_ID and PUBLIC_URL"
+        >
+          {busy === "real" ? "Dialing…" : "Start real calls (3)"}
+        </CutButton>
         {!job.confirmed && (
           <span className="text-xs text-muted-foreground">
             Confirm the spec on the intake page before calling vendors.
@@ -173,6 +213,22 @@ export default function JobMissionControl() {
           </span>
         )}
       </div>
+
+      {batchCalls.length > 0 && (
+        <div className="card flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3 text-sm">
+          <span className="font-medium text-foreground">
+            Batch {Math.max(currentBatch, 1)}/{totalBatches}
+          </span>
+          <span className="text-muted-foreground">{doneCount}/{batchCalls.length} calls done</span>
+          <span className="text-muted-foreground">
+            Baseline (best clean bid): {baseline != null ? `$${baseline.toLocaleString()}` : "\u2013"}
+          </span>
+          {flaggedCount > 0 && (
+            <span className="badge badge-warning">{flaggedCount} red-flagged</span>
+          )}
+          {!allDone && <span className="spinner" aria-hidden="true" />}
+        </div>
+      )}
 
       {calls.length > 0 && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

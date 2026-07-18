@@ -7,7 +7,10 @@ const callSchema = new mongoose.Schema(
     vendorName: { type: String },
     policyCardId: { type: String },
     round: { type: Number, enum: [1, 2], default: 1 },
-    mode: { type: String, enum: ["sim", "roleplay"], default: "sim" },
+    mode: { type: String, enum: ["sim", "roleplay", "real"], default: "sim" },
+    phone: { type: String }, // real calls: the business number dialed
+    batch: { type: Number }, // 1-based batch index for server-driven batch calls
+    pricingJitter: { type: Number, default: 1 }, // per-vendor scale on the policy card's prices
     status: {
       type: String,
       enum: ["pending", "live", "done", "failed"],

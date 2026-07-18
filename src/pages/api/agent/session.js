@@ -1,8 +1,8 @@
 import dbConnect from "@/lib/dbConnect";
 import Job from "@/backend/models/job";
 import Call from "@/backend/models/call";
-import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
+import { buildIntakeVars, buildBuyerVars } from "@/backend/services/agentVars";
 
 const AGENT_IDS = {
 	intake: () => process.env.ELEVENLABS_INTAKE_AGENT_ID,
@@ -27,42 +27,13 @@ export default async function handler(req, res) {
 
 		let dynamicVariables;
 		if (role === "intake") {
-			dynamicVariables = {
-				vertical_label: vertical.label,
-				taxonomy_json: JSON.stringify(vertical.jobSpec.fields),
-				interview_json: JSON.stringify(vertical.interview),
-				spec_draft_json: JSON.stringify(job.spec || {}),
-			};
+			dynamicVariables = buildIntakeVars(job, vertical);
 		} else {
 			const call = await Call.findById(callId);
 			if (!call) return res.status(404).json({ error: "Call not found" });
-
-			// Honesty guardrail: leverage is built server-side from committed Quote
-			// docs pinned to this call only (round 1 gets []), vendor names redacted —
-			// the agent physically cannot cite a bid that doesn't exist in Mongo.
-			const quotes = await Quote.find({
-				_id: { $in: call.leverageQuoteIds || [] },
-				committed: true,
-			});
-			const leverage = quotes.map((q) => ({
-				amount: q.total,
-				guaranteed: !!q.guaranteed,
-				itemised: (q.lines || []).map((l) => ({
-					label: l.label,
-					amount: l.amount,
-				})),
-				descriptor: "another licensed provider",
-			}));
-
-			dynamicVariables = {
-				vendor_name: call.vendorName || "",
-				job_spec_json: JSON.stringify(job.spec || {}),
-				round: call.round || 1,
-				leverage_json: JSON.stringify(leverage),
-				levers_json: JSON.stringify(vertical.levers),
-				fees_json: JSON.stringify(vertical.fees),
-				benchmarks_json: JSON.stringify(vertical.benchmarks),
-			};
+			// buildBuyerVars enforces the honesty guardrail: leverage comes only
+			// from committed Quote docs pinned to this call, vendor names redacted.
+			dynamicVariables = await buildBuyerVars(job, call, vertical);
 		}
 
 		const agentId = AGENT_IDS[role]();

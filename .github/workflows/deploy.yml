@@ -1,0 +1,28 @@
+name: Deploy to DigitalOcean
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy to DigitalOcean
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.DO_HOST }}
+                  username: ${{ secrets.DO_USERNAME }}
+                  password: ${{ secrets.DO_PASSWORD }}
+                  command_timeout: 30m
+                  # Fail the job on the FIRST failing command. Without this a
+                  # failed git pull silently redeploys the stale checkout and
+                  # the run still shows green.
+                  script_stop: true
+                  script: |
+                      set -e
+                      cd /root/the-negotiator
+                      git pull origin main
+                      docker compose up web --build -d --wait
+                      docker image prune -f

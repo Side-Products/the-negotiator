@@ -63,7 +63,7 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
   };
 
   const vendorTurn = async (lastAgentText) => {
-    // Queue buyer utterances that land mid-round-trip — dropping them would
+    // Queue buyer utterances that land mid-round-trip: dropping them would
     // desync turnRefs between the client and the persisted transcript.
     if (busyRef.current) {
       pendingRef.current = pendingRef.current
@@ -212,7 +212,7 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
         },
         onError: (message) => {
           toast.error(String(message));
-          // A failure before onConnect means the session never opened — the
+          // A failure before onConnect means the session never opened; the
           // SDK won't fire onDisconnect, so unstick the button here.
           if (!connectedRef.current) {
             setStarting(false);
@@ -225,16 +225,6 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
       setStarting(false);
       startedRef.current = false;
       await markFailed(`Could not start call: ${err.message}`);
-    }
-  };
-
-  const setModeAndSave = async (m) => {
-    setMode(m);
-    try {
-      await api(`/api/calls/${call._id}`, "PATCH", { mode: m });
-      onChanged?.();
-    } catch (err) {
-      toast.error(err.message);
     }
   };
 
@@ -268,24 +258,21 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
         )}
       </div>
 
-      {/* Mode toggle — locked once the call has started */}
-      <div className="flex items-center gap-1 text-xs">
-        {["sim", "roleplay"].map((m) => (
-          <button
-            key={m}
-            onClick={() => setModeAndSave(m)}
-            disabled={connected || starting || displayStatus === "done" || displayStatus === "live"}
-            className={`rounded px-2 py-1 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-              mode === m
-                ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {m === "sim" ? "sim vendor" : "role-play"}
-          </button>
-        ))}
-        {connected && mode === "sim" && (
-          <span className="ml-auto text-muted-foreground">mic muted</span>
+      {/* Sim calls run server-side in batches, real calls dial actual
+          businesses, role-play is the live browser session. */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {mode === "roleplay" ? (
+          <span className="badge bg-foreground text-background">live role-play</span>
+        ) : mode === "real" ? (
+          <>
+            <span className="badge badge-warning">real call</span>
+            {call.phone && <span>{call.phone}</span>}
+          </>
+        ) : (
+          <>
+            <span className="badge badge-info">auto (batch {call.batch || "?"})</span>
+            {displayStatus === "pending" && <span>waiting for its batch…</span>}
+          </>
         )}
       </div>
 
@@ -325,17 +312,21 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
       </button>
       {showTranscript && <TranscriptView transcript={displayTurns} />}
 
-      <div className="mt-auto flex gap-2 border-t border-border pt-3">
-        {connected ? (
-          <button onClick={() => endSession()} className="btn bg-error-500 text-white hover:bg-error-600">
-            End call
-          </button>
-        ) : (
-          <button onClick={start} disabled={!canStart} className="btn btn-primary disabled:opacity-50">
-            {starting ? "Connecting…" : displayStatus === "failed" ? "Retry call" : "Start call"}
-          </button>
-        )}
-      </div>
+      {/* Only role-play calls are started from the browser; sim calls are
+          driven by the server-side batch runner. */}
+      {mode === "roleplay" && (
+        <div className="mt-auto flex gap-2 border-t border-border pt-3">
+          {connected ? (
+            <button onClick={() => endSession()} className="btn bg-error-500 text-white hover:bg-error-600">
+              End call
+            </button>
+          ) : (
+            <button onClick={start} disabled={!canStart} className="btn btn-primary disabled:opacity-50">
+              {starting ? "Connecting…" : displayStatus === "failed" ? "Retry call" : "Answer as vendor"}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
