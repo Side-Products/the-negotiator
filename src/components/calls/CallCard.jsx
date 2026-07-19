@@ -52,7 +52,9 @@ function VendorCounterpart({ jobId, callId, controlsRef, onVendorText, onVendorM
 }
 
 function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVendorMode, onVendorDown }) {
-  const { startSession, endSession, sendUserMessage } = useConversation({ micMuted: true });
+  const { startSession, endSession, sendUserMessage, sendUserActivity } = useConversation({
+    micMuted: true,
+  });
   const upRef = useRef(false);
 
   useEffect(() => {
@@ -93,6 +95,9 @@ function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVe
         });
       },
       say: (text) => sendUserMessage(text),
+      // Keeps the vendor's idle timer fed while the buyer's turn plays out,
+      // so it never re-engages ("still there?") over the buyer's audio.
+      activity: () => sendUserActivity(),
       end: () => {
         upRef.current = false;
         endSession();
@@ -101,7 +106,7 @@ function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVe
     return () => {
       controlsRef.current = null;
     };
-  }, [jobId, callId, controlsRef, onVendorText, onVendorMode, onVendorDown, startSession, endSession, sendUserMessage]);
+  }, [jobId, callId, controlsRef, onVendorText, onVendorMode, onVendorDown, startSession, endSession, sendUserMessage, sendUserActivity]);
 
   useEffect(() => () => endSession(), [endSession]);
   return null;
@@ -147,12 +152,20 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   const vendorSpeakingRef = useRef(false);
   const buyerOwesAudioRef = useRef(0);
   const vendorOwesAudioRef = useRef(0);
+  // Timestamps set when a message is delivered INTO a session, cleared when
+  // that session's reply text arrives. While set, the other session gets
+  // user-activity pings so its idle timer never fires mid-turn: each session
+  // experiences the counterpart's playback as dead air, and without the pings
+  // it would re-engage ("still there?") over the counterpart's audio.
+  const awaitingBuyerReplyRef = useRef(0);
+  const awaitingVendorReplyRef = useRef(0);
+  const lastPingRef = useRef({ buyer: 0, vendor: 0 });
   const toVendorRef = useRef("");
   const toBuyerRef = useRef("");
   const relayInFlightRef = useRef(false);
   const lastQuietAtRef = useRef(0);
 
-  const { status, startSession, endSession, sendUserMessage, sendContextualUpdate } =
+  const { status, startSession, endSession, sendUserMessage, sendContextualUpdate, sendUserActivity } =
     useConversation({
       // Everything except role-play runs without the human mic.
       micMuted: mode !== "roleplay",
@@ -190,35 +203,59 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   // Counter-mode relay pump: every 250ms, if nobody is speaking, nobody owes
   // audio, and it has been quiet for a beat, deliver exactly one queued
   // utterance to the other agent. Buyer-to-vendor first (the buyer leads).
+  // It also feeds user-activity pings to whichever session is waiting on the
+  // other's in-flight turn, so neither idle-timer ever fires mid-conversation.
   useEffect(() => {
     if (mode !== "counter" || status !== "connected") return;
     lastQuietAtRef.current = Date.now();
     const owes = (ref) => ref.current && Date.now() - ref.current < 6000;
+    // Reply pending for up to 30s: covers slow generation and tool-call turns.
+    const awaiting = (ref) => ref.current && Date.now() - ref.current < 30000;
     const pump = setInterval(() => {
+      const now = Date.now();
+      // A turn is in flight for a side while it speaks, owes audio for queued
+      // text, or has been handed a message it has not answered yet. The OTHER
+      // side gets pinged (throttled to 1s) so it keeps waiting instead of
+      // re-engaging into the silence it perceives.
+      const buyerTurnInFlight =
+        buyerSpeakingRef.current || owes(buyerOwesAudioRef) || awaiting(awaitingBuyerReplyRef);
+      const vendorTurnInFlight =
+        vendorSpeakingRef.current || owes(vendorOwesAudioRef) || awaiting(awaitingVendorReplyRef);
+      if (vendorTurnInFlight && now - lastPingRef.current.buyer > 1000) {
+        lastPingRef.current.buyer = now;
+        sendUserActivity();
+      }
+      if (buyerTurnInFlight && now - lastPingRef.current.vendor > 1000) {
+        lastPingRef.current.vendor = now;
+        vendorControls.current?.activity?.();
+      }
+
       if (relayInFlightRef.current) return;
       const bothQuiet =
         !buyerSpeakingRef.current &&
         !vendorSpeakingRef.current &&
         !owes(buyerOwesAudioRef) &&
         !owes(vendorOwesAudioRef) &&
-        Date.now() - lastQuietAtRef.current > 600;
+        now - lastQuietAtRef.current > 600;
       if (!bothQuiet) return;
       if (toVendorRef.current) {
         const text = toVendorRef.current;
         toVendorRef.current = "";
         relayInFlightRef.current = true;
+        awaitingVendorReplyRef.current = Date.now();
         vendorControls.current?.say(text);
         setTimeout(() => (relayInFlightRef.current = false), 800);
       } else if (toBuyerRef.current) {
         const text = toBuyerRef.current;
         toBuyerRef.current = "";
         relayInFlightRef.current = true;
+        awaitingBuyerReplyRef.current = Date.now();
         sendUserMessage(text);
         setTimeout(() => (relayInFlightRef.current = false), 800);
       }
     }, 250);
     return () => clearInterval(pump);
-  }, [mode, status, sendUserMessage]);
+  }, [mode, status, sendUserMessage, sendUserActivity]);
 
   const pushTurn = (role, text) => {
     const turn = { role, text, turnIndex: turnsRef.current.length, at: new Date().toISOString() };
@@ -396,12 +433,14 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
             pushTurn("buyer", message);
             if (sim) vendorTurn(message);
             // Counter mode: queue for the relay pump instead of sending now.
-            // The queued turn's audio is still coming, so mark it owed.
+            // The queued turn's audio is still coming, so mark it owed. The
+            // buyer has now answered whatever it was handed.
             if (counter) {
               toVendorRef.current = toVendorRef.current
                 ? `${toVendorRef.current} ${message}`
                 : message;
               buyerOwesAudioRef.current = Date.now();
+              awaitingBuyerReplyRef.current = 0;
             }
           } else if (!sim && !counter) {
             pushTurn("vendor", message);
@@ -525,9 +564,11 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
           onVendorText={(text) => {
             pushTurn("vendor", text);
             // Queue for the relay pump; the vendor's audio for this turn is
-            // still coming, so mark it owed until playback starts.
+            // still coming, so mark it owed until playback starts. The vendor
+            // has now answered whatever it was handed.
             toBuyerRef.current = toBuyerRef.current ? `${toBuyerRef.current} ${text}` : text;
             vendorOwesAudioRef.current = Date.now();
+            awaitingVendorReplyRef.current = 0;
           }}
           onVendorMode={(speaking) => {
             vendorSpeakingRef.current = speaking;

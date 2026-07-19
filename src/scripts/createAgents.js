@@ -199,6 +199,10 @@ STYLE:
 const vendorAgent = {
   name: "Haggle — Vendor (counter-agent)",
   conversation_config: {
+    // Never re-engage on user silence: this agent's "user" is the relayed
+    // buyer, whose long audible turns look like dead air to this session. A
+    // timeout here would make the vendor talk over the buyer's audio.
+    turn: { turn_timeout: -1 },
     tts: {
       voice_id: "TxGEqnHWrfWFTfGW9XjX",
       model_id: "eleven_turbo_v2",
