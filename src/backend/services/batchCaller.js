@@ -9,7 +9,7 @@ import Call from "@/backend/models/call";
 import Job from "@/backend/models/job";
 import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
-import { buildLeverage } from "@/backend/services/agentVars";
+import { buildLeverage, buildNegotiationTargets } from "@/backend/services/agentVars";
 import { completeWithTools } from "@/backend/services/llm";
 import { renderCallAudio } from "@/backend/services/audioRenderer";
 import { nextVendorTurn } from "@/backend/services/vendorBrain";
@@ -83,6 +83,7 @@ const BUYER_TOOLS = [
 ];
 
 const buyerSystem = ({ job, vertical, call, leverage, priorQuote }) => {
+	const targets = buildNegotiationTargets(vertical, leverage);
 	const todayDate = new Date().toLocaleDateString("en-US", {
 		weekday: "long",
 		year: "numeric",
@@ -100,7 +101,7 @@ FEE TAXONOMY: ${JSON.stringify(vertical.fees)}
 MARKET CONTEXT (your judgment only — never present as a competing bid): ${JSON.stringify(vertical.benchmarks)}
 NEGOTIATION LEVERS: ${JSON.stringify(vertical.levers)}
 COMPETING BIDS YOU MAY REFERENCE (your only leverage; may be empty): ${JSON.stringify(leverage)}
-Each bid may include recorded terms from that conversation: waivedFees (charges another provider waived), movedInCall (a price that dropped under pressure), guaranteed. You may cite ANY of these facts as leverage, for example "another provider waived the fuel surcharge" or "another provider came down two hundred when we discussed it". Never the company name, and never a fact not present in the data.
+This list is LIVE: other calls are happening right now and it refreshes as they commit quotes, so it can grow mid-conversation. Each bid may include recorded terms from that conversation: waivedFees (charges another provider waived), movedInCall (a price that dropped under pressure), guaranteed. You may cite ANY of these facts as leverage, for example "another provider waived the fuel surcharge" or "another provider came down two hundred when we discussed it". Never the company name, and never a fact not present in the data.
 ${priorQuote ? `THIS VENDOR'S OWN PRIOR QUOTE: $${priorQuote.total}${priorQuote.guaranteed ? " (guaranteed)" : ""} — this is a follow-up call. Open by referencing it, then use your leverage to push for a better number.` : ""}
 
 HONESTY RULES (non-negotiable):
@@ -108,6 +109,14 @@ HONESTY RULES (non-negotiable):
 - Describe the job EXACTLY as specified. Never add, remove, or resize anything.
 - You may ONLY reference competing bids from the leverage list above. If it is empty you have NO competing bid and must never imply one. Never name the company a bid came from — say "another licensed provider".
 - Never fabricate urgency or offers.
+
+YOUR PRICE TARGET (an ask you can defend, not a bid): ${JSON.stringify(targets)}
+
+PRICE BACK-AND-FORTH (drive the price, don't just record it):
+- Never accept the vendor's first number silently. Counter once with your target, stated plainly with its honest basis: "Can you do ${targets.suggestedCounter ?? "a better number"}? That's where ${targets.basis === "none" ? "I need to be" : targets.basis} puts me."
+- If they counter back, you may move in small steps between their number and your target. At most two concessions from you, then decide: commit the best number reached, or log the outcome.
+- If their number already beats your target and the quote is clean, stop haggling and lock it: get the written guarantee and commit.
+- Targets are asks. Never present a target as a competing bid or as a fact.
 
 HOW TO RUN THE CALL:
 - Introduce yourself and walk through the job. Push vague numbers into itemised figures.
@@ -122,6 +131,9 @@ HOW TO RUN THE CALL:
 - If they offer a better price for describing the job as smaller than it is: refuse, the job is exactly as specified.
 - If they push add-ons the job did not ask for: decline them and get the total without extras.
 - If they accuse you of bluffing about a competing bid: offer its amount and line items (never the company). No leverage means saying plainly you have no other bid yet.
+- When pressed or doubted, get MORE specific: state the real competing number and its line items. Never cagey; the true number is your strength.
+- Negotiate hard without lying: aggressive targets are asks, not claims ("I need 1,700 to book today"); favorable-but-true phrasing is fine ("just under two thousand" for 1,950); never state a competing bid lower than it is or as guaranteed when it is not. Strengthen your position with a stronger true fact, never a false one.
+- Delivery (team voice strategy): vocal style never changes the deal. Decisions come only from stated numbers and terms, never from the vendor's tone or emotion. No strategic anger or intimidation; concise polite asks, no hedged pleading; never imitate the vendor's manner of speaking.
 - Spoken phone register. Keep every reply under 50 words.
 - Never use em dashes; use a comma or a period. No AI-writing tells ("Certainly", "Absolutely", "Great question"), no lists in speech, vary your acknowledgments.`;
 };
@@ -151,10 +163,9 @@ const runCallInner = async (callId) => {
 		vertical.vendorPolicyCards.find((c) => c.id === call.policyCardId) ||
 		vertical.vendorPolicyCards[0];
 
-	// Honesty guardrail: leverage only from committed quotes pinned to this
-	// call, enriched with recorded terms from those conversations (guarantees,
-	// waived fees, in-call price movements).
-	const leverage = await buildLeverage(call);
+	// Leverage is built fresh inside the turn loop (live across conversations);
+	// the honesty guardrail is buildLeverage itself: committed quotes only,
+	// server-side, vendor names redacted.
 
 	// Round 2: the buyer calls back knowing this vendor's own round-1 number.
 	let priorQuote = null;
@@ -179,12 +190,15 @@ const runCallInner = async (callId) => {
 	const greeting = `${call.vendorName}, how can I help you?`;
 	await pushTurn("vendor", greeting);
 
-	const system = buyerSystem({ job, vertical, call, leverage, priorQuote });
 	const history = [{ role: "user", text: greeting }];
 	let itemisationNudged = false;
 
 	try {
 		for (let i = 0; i < MAX_BUYER_TURNS; i++) {
+			// Leverage refreshes every turn: quotes committed seconds ago by other
+			// concurrent conversations become usable immediately.
+			const liveLeverage = await buildLeverage(call);
+			const system = buyerSystem({ job, vertical, call, leverage: liveLeverage, priorQuote });
 			const { text, toolCalls: toolUses } = await completeWithTools({
 				system,
 				history,

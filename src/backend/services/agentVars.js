@@ -25,31 +25,66 @@ export const buildIntakeVars = (job, vertical) => ({
 	spec_draft_json: JSON.stringify(job.spec || {}),
 });
 
-// Leverage is more than a number: the other conversations recorded guarantees,
-// waived fees, and in-call price movements. All of it comes from committed
-// Quote docs and their calls' recorded negotiation events, so every fact the
-// buyer may cite exists in the database. Vendor names are never included.
+// LIVE leverage: every committed quote from this job's OTHER conversations,
+// as of right now. Enriched with recorded terms (guarantees, waived fees,
+// in-call price movements). Everything comes from committed Quote docs and
+// recorded negotiation events, so every fact the buyer may cite exists in the
+// database; vendor names are never included; a vendor's own quotes are never
+// offered as leverage against them. Grows during a run as other calls commit,
+// which is the point: each conversation negotiates with everything the
+// system has already learned.
 export const buildLeverage = async (call) => {
+	const jobCalls = await Call.find({ jobId: call.jobId });
+	const callById = Object.fromEntries(jobCalls.map((c) => [c._id.toString(), c]));
+	const otherCallIds = jobCalls
+		.filter((c) => c.vendorName !== call.vendorName)
+		.map((c) => c._id);
 	const quotes = await Quote.find({
-		_id: { $in: call.leverageQuoteIds || [] },
+		jobId: call.jobId,
 		committed: true,
+		$or: [{ callId: { $in: otherCallIds } }, { _id: { $in: call.leverageQuoteIds || [] } }],
 	});
-	const sourceCalls = await Call.find({ _id: { $in: quotes.map((q) => q.callId) } });
-	const callById = Object.fromEntries(sourceCalls.map((c) => [c._id.toString(), c]));
 
-	return quotes.map((q) => {
-		const source = callById[q.callId?.toString()];
-		const waived = (q.lines || []).filter((l) => l.amount === 0).map((l) => l.label);
-		const moved = (source?.negotiationEvents || [])[0];
-		return {
-			amount: q.total,
-			guaranteed: !!q.guaranteed,
-			itemised: (q.lines || []).map((l) => ({ label: l.label, amount: l.amount })),
-			...(waived.length && { waivedFees: waived }),
-			...(moved && { movedInCall: { from: moved.beforeTotal, to: moved.afterTotal } }),
-			descriptor: "another licensed provider",
-		};
-	});
+	return quotes
+		.sort((a, b) => (a.total || 0) - (b.total || 0))
+		.map((q) => {
+			const source = callById[q.callId?.toString()];
+			const waived = (q.lines || []).filter((l) => l.amount === 0).map((l) => l.label);
+			const moved = (source?.negotiationEvents || [])[0];
+			return {
+				amount: q.total,
+				guaranteed: !!q.guaranteed,
+				itemised: (q.lines || []).map((l) => ({ label: l.label, amount: l.amount })),
+				...(waived.length && { waivedFees: waived }),
+				...(moved && { movedInCall: { from: moved.beforeTotal, to: moved.afterTotal } }),
+				descriptor: "another licensed provider",
+			};
+		});
+};
+
+// A defensible price target the buyer can ASK for, derived from real data:
+// a notch under the best committed bid when one exists, else the low end of
+// the vertical's market data. The target is an ask, never presented as a bid;
+// its basis is real so the agent can justify it out loud honestly.
+export const buildNegotiationTargets = (vertical, leverage) => {
+	const b = vertical.benchmarks || {};
+	const round5 = (n) => Math.max(5, Math.round(n / 5) * 5);
+	const counterBelowBestPct = b.counterBelowBestPct || 8;
+	const best = leverage.length ? Math.min(...leverage.map((l) => l.amount)) : null;
+
+	let suggestedCounter = null;
+	let basis = "none";
+	if (best) {
+		suggestedCounter = round5(best * (1 - counterBelowBestPct / 100));
+		basis = `a notch under the best committed bid ($${best})`;
+	} else if (b.marketMin) {
+		suggestedCounter = round5(b.marketMin);
+		basis = `the low end of market data ($${b.marketMin})`;
+	}
+	if (suggestedCounter && b.marketMin) {
+		suggestedCounter = Math.max(suggestedCounter, round5(b.marketMin * 0.9));
+	}
+	return { suggestedCounter, basis, marketLow: b.marketMin ?? null, marketMid: b.marketMid ?? null };
 };
 
 export const buildBuyerVars = async (job, call, vertical, { recordingNote = "" } = {}) => {
@@ -63,6 +98,7 @@ export const buildBuyerVars = async (job, call, vertical, { recordingNote = "" }
 		job_spec_json: JSON.stringify(job.spec || {}),
 		round: call.round || 1,
 		leverage_json: JSON.stringify(leverage),
+		targets_json: JSON.stringify(buildNegotiationTargets(vertical, leverage)),
 		levers_json: JSON.stringify(vertical.levers),
 		fees_json: JSON.stringify(vertical.fees),
 		benchmarks_json: JSON.stringify(vertical.benchmarks),

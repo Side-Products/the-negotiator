@@ -56,12 +56,39 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   const startedRef = useRef(false);
   const connectedRef = useRef(false);
 
-  const { status, startSession, endSession, sendUserMessage } = useConversation({
-    micMuted: mode === "sim",
-  });
+  const { status, startSession, endSession, sendUserMessage, sendContextualUpdate } =
+    useConversation({
+      micMuted: mode === "sim",
+    });
   const connected = status === "connected" || status === "connecting";
 
   useEffect(() => () => endSession(), [endSession]);
+
+  // Live leverage: every 5s while on a call, pull the job's current committed
+  // quotes and push changes into the running session as a contextual update,
+  // so quotes landing in OTHER conversations become usable mid-call.
+  const leverageJsonRef = useRef(null);
+  useEffect(() => {
+    if (status !== "connected") {
+      leverageJsonRef.current = null;
+      return;
+    }
+    const tick = async () => {
+      try {
+        const data = await api(`/api/calls/${call._id}/leverage`);
+        const json = JSON.stringify(data.leverage || []);
+        if (leverageJsonRef.current !== null && json !== leverageJsonRef.current && data.leverage?.length) {
+          sendContextualUpdate(
+            `Live update: your competing-bid leverage changed as other calls completed. Current leverage (cite only these, never a company name): ${json}`,
+          );
+        }
+        leverageJsonRef.current = json;
+      } catch {}
+    };
+    tick();
+    const t = setInterval(tick, 5000);
+    return () => clearInterval(t);
+  }, [status, call._id, sendContextualUpdate]);
 
   const pushTurn = (role, text) => {
     const turn = { role, text, turnIndex: turnsRef.current.length, at: new Date().toISOString() };

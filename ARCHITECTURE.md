@@ -24,7 +24,7 @@ Consequences you must preserve:
 
 ## Hard invariants (do not weaken)
 
-1. **The agent physically cannot invent a competing bid.** `leverage_json` (session bootstrap) and `GET /api/calls/[id]/leverage` are both built from `Quote.find({ _id: { $in: call.leverageQuoteIds }, committed: true })`. Round-1 calls have `leverageQuoteIds: []`, so leverage is empty by construction. Vendor names are redacted to "another licensed provider".
+1. **The agent physically cannot invent a competing bid.** Leverage is LIVE but server-built (`agentVars.buildLeverage`): every committed quote from the job's OTHER conversations as of now, refreshed each batch-engine turn and pushed to live sessions as 5s contextual updates. A vendor's own quotes are never offered against them, vendor names are redacted to "another licensed provider", and a bid that does not exist committed in Mongo cannot be cited — before any quote commits, leverage is empty by construction.
 2. **The spec freezes at confirmation.** `POST /api/jobs/[id]/confirm` sets `confirmed: true`; after that, spec PATCHes return 409. Every Call pins `specVersion`. This is the challenge's "same spec reused verbatim across every call" requirement.
 3. **Quote totals are server truth.** `commit.js` recomputes `total = sum(lines)` and overrides the agent's claimed total (returning a correction note if it drifted > $1). Red flags are computed server-side (`redFlagService.evaluate`) at commit time.
 4. **AI disclosure.** The buyer prompt requires an immediate, truthful "Yes — I'm an AI assistant calling on behalf of a real customer" whenever asked. Never remove or soften this.
