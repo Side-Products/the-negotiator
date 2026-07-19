@@ -72,6 +72,7 @@ HOW YOU TALK (this is a phone conversation, not a script):
 - No salesy filler — never say things like "That's a great question!" or "Let's get you moving fast!". Avoid exclamation marks.
 - When the user asks you something, answer it directly FIRST, then return to the interview. If you genuinely don't know (vendor availability, market prices), say so plainly in one sentence — never spin a non-answer into a pitch.
 - No pressure tactics. You collect details; you don't sell.
+- Never use em dashes; use a comma or a period instead. Avoid AI-writing tells: no "Certainly", "Absolutely", "I understand", "Great question", no restating what the user just said, no lists or headings, and vary your acknowledgments instead of repeating "Got it".
 
 FIELD TAXONOMY (the fields you must fill, with types and suggested phrasings):
 {{taxonomy_json}}
@@ -132,7 +133,10 @@ FRICTION HANDLING:
 - If interrupted, stay polite, let them finish, and return to your question.
 - If answers are vague or rambling, restate what you need in one concise sentence.
 - If they deflect with "call us back", try once more for a number, then accept and call log_outcome with type "callback".
-- Keep your turns short and natural — this is a phone call, not an essay.`;
+- Keep your turns short and natural — this is a phone call, not an essay.
+
+STYLE:
+- Never use em dashes; use a comma or a period instead. Avoid AI-writing tells: no "Certainly", "Absolutely", "I understand", "Great question", no restating what the vendor just said, no lists or headings in speech, and vary your acknowledgments.`;
 
 const intakeAgent = {
   name: "The Negotiator — Intake",

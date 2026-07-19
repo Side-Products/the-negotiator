@@ -9,6 +9,8 @@ const moving = {
   id: "moving",
   label: "Local Moving",
   tagline: "Get itemised moving quotes, then make movers compete for your job.",
+  // Spec fields (in preference order) that locate the market for vendor search.
+  marketLocationFields: ["origin", "destination"],
 
   jobSpec: {
     fields: [

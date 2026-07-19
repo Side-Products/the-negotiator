@@ -12,7 +12,7 @@ import getVertical from "@/config/verticals";
 import { completeWithTools } from "@/backend/services/llm";
 import { nextVendorTurn } from "@/backend/services/vendorBrain";
 import { addQuoteLine, commitQuote } from "@/backend/services/quoteOps";
-import { discoverVendors } from "@/backend/services/vendorDiscovery";
+import { discoverVendors, jobMarketLocation } from "@/backend/services/vendorDiscovery";
 
 const MAX_BUYER_TURNS = 24; // hard stop per call
 
@@ -107,7 +107,8 @@ HOW TO RUN THE CALL:
 - Only call record_negotiation_event when a total the vendor stated earlier in THIS call actually changed. Never for the first number you hear.
 - NEVER commit a single lump-sum line. Get the breakdown (labor, travel, fuel, materials, fees) as separate log_quote_item calls first. A quote with fewer than 3 lines is not itemised.
 - End with commit_quote or log_outcome, then say a brief goodbye.
-- Spoken phone register. Keep every reply under 50 words.`;
+- Spoken phone register. Keep every reply under 50 words.
+- Never use em dashes; use a comma or a period. No AI-writing tells ("Certainly", "Absolutely", "Great question"), no lists in speech, vary your acknowledgments.`;
 };
 
 // One complete buyer<->vendor call, entirely server-side.
@@ -253,7 +254,8 @@ export const runCall = async (callId) => {
 // immediately), assigning each real vendor a hidden policy card + price jitter.
 export const createBatchCalls = async (job, { total = 20, batchSize = 5, location }) => {
 	const vertical = getVertical(job.vertical);
-	const vendors = await discoverVendors(job.vertical, location || "Rock Hill, SC", { limit: total });
+	const where = location || jobMarketLocation(job, vertical) || "Rock Hill, SC";
+	const vendors = await discoverVendors(job.vertical, where, { limit: total });
 	const cards = vertical.vendorPolicyCards;
 	const docs = [];
 	for (let i = 0; i < total; i++) {

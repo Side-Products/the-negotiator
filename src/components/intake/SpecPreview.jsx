@@ -46,7 +46,9 @@ function ListEditor({ field, value, onEdit }) {
                 type={type === "number" ? "number" : "text"}
                 defaultValue={row[col] ?? ""}
                 placeholder={col}
-                className={`input ${type === "number" ? "w-20 shrink-0" : ""}`}
+                // `.input` is unlayered in globals.css, so its `w-full` beats a
+                // plain `w-20` utility — `!w-20` forces the qty box narrow.
+                className={`input min-w-0 ${type === "number" ? "!w-20 shrink-0" : "flex-1"}`}
                 onBlur={(e) => {
                   const v = type === "number" ? Number(e.target.value) || 0 : e.target.value;
                   if (v !== row[col]) commitCell(i, col, v);
@@ -183,7 +185,7 @@ export default function SpecPreview({ job, onFieldEdit, onConfirm }) {
   const complete = filled.length === required.length;
 
   return (
-    <section className="card p-5">
+    <section className="card min-w-0 p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold">Job spec</h2>
         <div className="flex items-center gap-2">

@@ -73,6 +73,7 @@ RULES
 - Every factual claim (a price, a fee, a refusal, a concession, a red flag) MUST carry a citation in the exact form [call:<callId>#<turnRef>] pointing at the transcript turn that proves it. No uncited claims.
 - Use the callId and turnIndex/turnRef values from the data verbatim.
 - Plain language a homeowner understands. No jargon, no markdown headings, short paragraphs.
+- Never use em dashes; use commas, colons, or periods. Avoid AI-writing patterns: no "delve", "It's worth noting", "In conclusion", no bullet lists, no hedging boilerplate.
 - Explain the recommendation, the risks on the cheaper options, and any price movement caused by negotiation (before vs after, and what leverage caused it).
 - Market context: mid $${vertical.benchmarks.marketMid}, range $${vertical.benchmarks.marketMin}-$${vertical.benchmarks.marketMax} (${vertical.benchmarks.source}).`,
     messages: [

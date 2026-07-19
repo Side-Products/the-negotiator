@@ -107,7 +107,7 @@ export default function NewJob() {
               Build the spec by voice, by document, or both — then confirm to freeze it for every call.
             </p>
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
-              <div className="space-y-6">
+              <div className="min-w-0 space-y-6">
                 <VoiceInterviewPanel jobId={jobId} vertical={vertical} onSpecUpdate={refetchJob} />
                 <DocUpload jobId={jobId} vertical={vertical} onSpecUpdate={refetchJob} />
               </div>

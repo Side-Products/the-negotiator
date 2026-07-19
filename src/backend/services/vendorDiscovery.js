@@ -16,6 +16,16 @@ const CANNED = {
 	],
 };
 
+// The market location comes from the job's own spec, per the vertical's
+// marketLocationFields (e.g. moving: origin then destination).
+export const jobMarketLocation = (job, vertical) => {
+	for (const key of vertical?.marketLocationFields || []) {
+		const value = job?.spec?.[key];
+		if (typeof value === "string" && value.trim()) return value.trim();
+	}
+	return null;
+};
+
 export const discoverVendors = async (verticalId, location, { limit = 20 } = {}) => {
 	const key = process.env.GOOGLE_PLACES_API_KEY;
 	const canned = CANNED[verticalId] || CANNED.moving;

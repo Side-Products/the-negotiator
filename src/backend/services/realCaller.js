@@ -9,7 +9,7 @@ import Job from "@/backend/models/job";
 import getVertical from "@/config/verticals";
 import { buildBuyerVars } from "@/backend/services/agentVars";
 import { finalizeCall } from "@/backend/services/callFinalizer";
-import { discoverVendors } from "@/backend/services/vendorDiscovery";
+import { discoverVendors, jobMarketLocation } from "@/backend/services/vendorDiscovery";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -110,7 +110,8 @@ export const runRealCall = async (callId) => {
 // the blast radius small when calling real businesses.
 export const startRealCalls = async (job, { limit = 3, location } = {}) => {
 	const vertical = getVertical(job.vertical);
-	const vendors = (await discoverVendors(job.vertical, location || "Rock Hill, SC", { limit: 20 }))
+	const where = location || jobMarketLocation(job, vertical) || "Rock Hill, SC";
+	const vendors = (await discoverVendors(job.vertical, where, { limit: 20 }))
 		.filter((v) => v.phone)
 		.slice(0, limit);
 

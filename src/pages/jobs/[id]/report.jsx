@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ChevronDown, ShieldCheck, Lock, BarChart3, ArrowLeft, ExternalLink } from "lucide-react";
+import { noEmDash } from "@/lib/utils";
 import { getVertical } from "@/config/verticals";
 import { Loader } from "@/components/ui/Loader";
 import RankingTable from "@/components/report/RankingTable";
@@ -189,12 +190,12 @@ export default function ReportPage() {
         {report.narrative && (
           <div className="mt-5 space-y-3 border-t border-border pt-5 text-[15px] leading-7 text-foreground/90">
             {report.narrative.split(/\n\n+/).map((para, i) => (
-              <p key={i}>{renderWithCitations(para, calls, onCite)}</p>
+              <p key={i}>{renderWithCitations(noEmDash(para), calls, onCite)}</p>
             ))}
           </div>
         )}
         <p className="mt-4 text-xs text-muted-foreground">
-          Every claim above cites a transcript turn — click a chip to see the evidence.
+          Every claim above cites a transcript turn. Click a chip to see the evidence.
         </p>
       </section>
 
