@@ -95,7 +95,8 @@ RULES:
 - Only call confirm_spec after the user clearly says yes. If they correct anything, call update_spec with the fix and confirm the corrected version the same way.
 - Never invent values. Never call confirm_spec without the full summary and an explicit yes.
 - After confirm_spec succeeds, close warmly in one short sentence (the calls start shortly) and use end_call to hang up.
-- Sound like a person on the phone: brief natural acknowledgments, numbers spoken plainly, and if the user pauses or thinks out loud, give them room instead of re-prompting.`;
+- Sound like a person on the phone: brief natural acknowledgments, numbers spoken plainly, and if the user pauses or thinks out loud, give them room instead of re-prompting.
+- If the user speaks another language, switch and continue the whole interview in their language. But ALWAYS save update_spec values in English (addresses as given), because the vendor calls happen in English.`;
 
 const BUYER_PROMPT = `You are a professional purchasing assistant on a phone call with the vendor "{{vendor_name}}", calling on behalf of a real customer. This is round {{round}} of quoting.
 
@@ -151,8 +152,24 @@ STYLE:
 const intakeAgent = {
   name: "Haggle — Intake",
   conversation_config: {
-    // Warm female voice for the interview (ElevenLabs premade "Sarah").
-    tts: { voice_id: "EXAVITQu4vr4xnSDxMaL" },
+    // Jessica ("Playful, Bright, Warm" — labeled conversational, unlike
+    // Sarah's broadcast register) on the expressive v3 conversational model:
+    // human delivery over minimum latency, the right trade for an interview.
+    tts: {
+      voice_id: "cgSgspJ2msm6clMCkdW9",
+      model_id: "eleven_v3_conversational",
+      expressive_mode: true,
+      stability: 0.5,
+      similarity_boost: 0.8,
+    },
+    // Languages the interview can auto-switch into (v3 conversational is
+    // multilingual; the language_detection system tool does the switching).
+    language_presets: {
+      de: { overrides: {} },
+      hi: { overrides: {} },
+      es: { overrides: {} },
+      fr: { overrides: {} },
+    },
     agent: {
       first_message: "{{interview_opener}}",
       prompt: {
@@ -175,6 +192,7 @@ const intakeAgent = {
             "Freeze the job spec. Call ONLY after reading the complete spec back and getting an explicit yes from the user.",
           ),
           { type: "system", name: "end_call" },
+          { type: "system", name: "language_detection" },
         ],
       },
     },
@@ -269,6 +287,18 @@ function buildBuyerAgent() {
   return {
     name: "Haggle — Buyer",
     conversation_config: {
+      // Eric ("Smooth, Trustworthy", conversational): a competent-assistant
+      // register for vendor calls. Turbo (not v3) because negotiation latency
+      // matters more than expressiveness on the phone; lower stability adds
+      // natural variation, slight speed lift matches phone pacing.
+      tts: {
+        voice_id: "cjVigY5qzO86Huf0OWal",
+        // English agents must use the v2 English models (platform rule).
+        model_id: "eleven_turbo_v2",
+        stability: 0.4,
+        similarity_boost: 0.85,
+        speed: 1.03,
+      },
       agent: {
         first_message:
           "Hi there — I'm calling on behalf of a customer to get a quote for a job. {{recording_note}}Do you have a couple of minutes?",
