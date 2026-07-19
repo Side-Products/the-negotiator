@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { toast } from "sonner";
 import { getVertical } from "@/config/verticals";
+import { formatSpecValue } from "@/backend/services/jobSpec";
 import { CutButton } from "@/components/ui/CutButton";
 import { FullPageLoader } from "@/components/ui/Loader";
 import CallCard from "@/components/calls/CallCard";
@@ -18,20 +19,6 @@ async function api(url, method = "GET", body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
-}
-
-function formatValue(value) {
-  if (value === undefined || value === null || value === "") return "\u2013";
-  if (Array.isArray(value))
-    return value
-      .map((i) =>
-        typeof i === "object" && i !== null
-          ? `${i.item ?? i.name ?? ""}${i.qty ? ` ×${i.qty}` : ""}`
-          : String(i)
-      )
-      .join(", ");
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
 }
 
 function SpecCard({ job, vertical }) {
@@ -50,7 +37,9 @@ function SpecCard({ job, vertical }) {
         {fields.map((f) => (
           <div key={f.key} className="flex justify-between gap-3 text-sm">
             <dt className="shrink-0 text-muted-foreground">{f.label}</dt>
-            <dd className="text-right text-foreground">{formatValue(job.spec?.[f.key])}</dd>
+            <dd className="text-right text-foreground">
+              {formatSpecValue(f, job.spec?.[f.key])}
+            </dd>
           </div>
         ))}
       </dl>

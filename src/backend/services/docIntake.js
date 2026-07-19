@@ -1,37 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import getVertical from "@/config/verticals";
+import { fieldToJsonSchema } from "@/backend/services/jobSpec";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const ITEM_TYPES = { string: "string", number: "number", boolean: "boolean" };
-
-const fieldToJsonSchema = (field) => {
-	switch (field.type) {
-		case "enum":
-			return { type: "string", enum: field.options, description: field.label };
-		case "number":
-			return { type: "number", description: field.label };
-		case "boolean":
-			return { type: "boolean", description: field.label };
-		case "list":
-			return {
-				type: "array",
-				description: field.label,
-				items: {
-					type: "object",
-					properties: Object.fromEntries(
-						Object.entries(field.itemShape || {}).map(([key, t]) => [
-							key,
-							{ type: ITEM_TYPES[t] || "string" },
-						]),
-					),
-				},
-			};
-		default:
-			// string, date
-			return { type: "string", description: field.label };
-	}
-};
 
 // Vision extraction: the tool input schema is generated from the vertical's
 // jobSpec taxonomy, so a doc and the voice interview produce the same JSON.

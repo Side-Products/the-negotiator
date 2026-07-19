@@ -31,7 +31,7 @@ cp .env.example .env.local   # fill in the values below
 | `ELEVENLABS_API_KEY` | elevenlabs.io → Settings → API keys |
 | `ANTHROPIC_API_KEY` | console.anthropic.com |
 | `ELEVENLABS_INTAKE_AGENT_ID` / `ELEVENLABS_BUYER_AGENT_ID` | created by the next step |
-| `GOOGLE_PLACES_API_KEY` | optional — vendor discovery falls back to canned data |
+| `GOOGLE_PLACES_API_KEY` | optional: vendor discovery falls back to canned data; Telegram location typo checks require Places API (New) |
 | `OPENAI_API_KEY` | platform.openai.com → API keys (WhatsApp intake chat) |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | console.twilio.com → Account Info (WhatsApp bot) |
 | `TWILIO_WHATSAPP_FROM` | `whatsapp:+14155238886` (shared sandbox number) |

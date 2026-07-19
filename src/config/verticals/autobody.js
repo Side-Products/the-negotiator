@@ -26,6 +26,7 @@ const autobody = {
         required: true,
         itemShape: { panel: "string", severity: "enum" },
         options: ["scratch", "dent", "crushed"],
+        itemOptions: { severity: ["scratch", "dent", "crushed"] },
         ask: "Walk me through the damage, panel by panel. For each one: which panel, and is it a scratch, a dent, or crushed?",
       },
       {

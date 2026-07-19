@@ -3,6 +3,7 @@ import Job from "@/backend/models/job";
 import getVertical from "@/config/verticals";
 import { extractSpec } from "@/backend/services/docIntake";
 import { wasabiConfigured, uploadBuffer } from "@/backend/services/wasabiStorage";
+import { applySpecPatch, validationMessage } from "@/backend/services/jobSpec";
 
 const EXT = { "application/pdf": "pdf", "image/png": "png", "image/webp": "webp" };
 
@@ -35,11 +36,18 @@ export default async function handler(req, res) {
 			fileBase64,
 			mediaType,
 		});
+		const applied = applySpecPatch(job ? job.vertical : vertical, job?.spec || {}, spec);
+		if (!applied.valid) {
+			return res.status(422).json({
+				error: validationMessage(applied.errors),
+				errors: applied.errors,
+			});
+		}
 
 		if (!job) {
-			job = await Job.create({ vertical, spec, specSource: "doc" });
+			job = await Job.create({ vertical, spec: applied.spec, specSource: "doc" });
 		} else {
-			job.spec = { ...(job.spec || {}), ...spec };
+			job.spec = applied.spec;
 			job.markModified("spec");
 			job.specSource =
 				job.specSource === "voice" || job.specSource === "both" ? "both" : "doc";
