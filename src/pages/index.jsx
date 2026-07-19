@@ -347,8 +347,10 @@ export default function Home() {
       </header>
 
       <main className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden">
+        {/* Hero. `isolate` creates a stacking context so the -z-10 background
+            layers (dot grid, washes, lock figures) render above the page
+            background instead of being buried beneath it. */}
+        <section className="relative isolate overflow-hidden">
           {/* dotted grid + radial washes */}
           <div
             aria-hidden="true"
@@ -358,29 +360,18 @@ export default function Home() {
               WebkitMaskImage: "radial-gradient(70% 55% at 50% 0%, black, transparent 75%)",
             }}
           />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{
-              background:
-                "radial-gradient(60% 45% at 50% -8%, color-mix(in srgb, #08A0E9 16%, transparent), transparent 70%)",
-            }}
-          />
 
-          {/* Giant background lock: sits behind the hero copy, shackle opening
-              once on load. Faint enough to read as texture, not content. */}
+          {/* Giant background lock: anchored to the right edge and half
+              off-canvas so it reads as texture beside the copy, never under
+              it. Shackle springs open once on load. */}
           <LockFigure
             open
             strokeWidth={1}
-            className="pointer-events-none absolute left-1/2 top-14 -z-10 hidden h-[34rem] w-[34rem] -translate-x-1/2 text-primary-400/[0.08] sm:block dark:text-primary-400/[0.06]"
+            className="pointer-events-none absolute -right-28 top-1/2 -z-10 hidden h-[30rem] w-[30rem] -translate-y-1/2 rotate-[8deg] text-primary-400/[0.1] lg:block dark:text-primary-400/[0.07]"
           />
 
-          {/* Floating background locks (decorative, desktop only) */}
+          {/* Floating background lock (decorative, desktop only) */}
           <LockFigure className="float-y pointer-events-none absolute left-[8%] top-40 -z-10 hidden h-14 w-14 text-primary-400/25 lg:block" />
-          <LockFigure
-            className="float-y pointer-events-none absolute right-[10%] top-64 -z-10 hidden h-10 w-10 text-foreground/15 lg:block"
-            style={{ "--float-rot": "12deg", "--float-dur": "9s" }}
-          />
 
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
             <div className="mx-auto flex max-w-4xl flex-col items-center pb-14 pt-32 text-center sm:pt-40">
@@ -641,15 +632,7 @@ export default function Home() {
         </section>
 
         {/* Final CTA */}
-        <section className="relative overflow-hidden border-t border-border py-20 sm:py-28">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{
-              background:
-                "radial-gradient(50% 80% at 50% 110%, color-mix(in srgb, #08A0E9 18%, transparent), transparent 70%)",
-            }}
-          />
+        <section className="relative isolate overflow-hidden border-t border-border py-20 sm:py-28">
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
             <Reveal>
               <div className="cut-corners-lg mx-auto max-w-4xl bg-border p-px">
