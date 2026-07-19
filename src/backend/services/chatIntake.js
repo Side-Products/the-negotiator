@@ -40,7 +40,7 @@ const isYes = (text) => YES.has(normalizedAnswer(text));
 const isNo = (text) => NO.has(normalizedAnswer(text));
 
 export const verticalMenu = () =>
-	`👋 Welcome to The Negotiator. I get vendors to compete for your job.\n\nWhat do you need quotes for?\n${VERTICALS.map(
+	`👋 Welcome to Haggle. I get vendors to compete for your job.\n\nWhat do you need quotes for?\n${VERTICALS.map(
 		(vertical, index) => `${index + 1}. ${vertical.label}`,
 	).join("\n")}\n\nReply with a number. Send "restart" anytime to start over.`;
 
@@ -67,7 +67,7 @@ const intakeSystemPrompt = (vertical, currentSpec, channel) => {
 				}${field.itemShape ? `, itemShape: ${JSON.stringify(field.itemShape)}` : ""}): ${field.ask}`,
 		)
 		.join("\n");
-	return `You are the ${channel} intake assistant for The Negotiator. Collect a "${vertical.label}" job specification.
+	return `You are the ${channel} intake assistant for Haggle. Collect a "${vertical.label}" job specification.
 Today's date is ${new Date().toISOString().slice(0, 10)}. Resolve relative dates to the nearest future date.
 
 ${vertical.interview?.style || "Be warm and concise. Ask exactly one question at a time."}
