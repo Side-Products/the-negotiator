@@ -1,5 +1,6 @@
 import dbConnect from "@/lib/dbConnect";
 import Job from "@/backend/models/job";
+import { confirmJob } from "@/backend/services/jobConfirmation";
 
 export default async function handler(req, res) {
 	if (req.method !== "POST") {
@@ -10,15 +11,13 @@ export default async function handler(req, res) {
 		const job = await Job.findById(req.query.id);
 		if (!job) return res.status(404).json({ error: "Job not found" });
 
-		if (!job.confirmed) {
-			job.confirmed = true;
-			job.confirmedAt = new Date();
-			job.status = "confirmed";
-			await job.save();
-		}
-		return res.status(200).json({ job });
+		const confirmedJob = await confirmJob(job);
+		return res.status(200).json({ job: confirmedJob });
 	} catch (error) {
 		console.error("jobs/confirm error:", error);
-		return res.status(500).json({ error: error.message });
+		return res.status(error.statusCode || 500).json({
+			error: error.message,
+			...(error.errors ? { errors: error.errors } : {}),
+		});
 	}
 }

@@ -3,6 +3,7 @@
 // remount them with fresh values while typing is never clobbered by polling.
 
 import getVertical from "@/config/verticals";
+import { formatSpecValue } from "@/backend/services/jobSpec";
 import { CutButton } from "@/components/ui/CutButton";
 import { Lock, Plus, X } from "lucide-react";
 
@@ -40,6 +41,22 @@ function ListEditor({ field, value, onEdit }) {
                 />
                 {col}
               </label>
+            ) : type === "enum" ? (
+              <select
+                key={col}
+                defaultValue={row[col] ?? ""}
+                className="input"
+                onChange={(e) => commitCell(i, col, e.target.value)}
+              >
+                <option value="" disabled>
+                  {col}
+                </option>
+                {(field.itemOptions?.[col] || field.options || []).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             ) : (
               <input
                 key={col}
@@ -95,7 +112,7 @@ function FieldEditor({ field, value, onEdit }) {
           </option>
           {(field.options || []).map((o) => (
             <option key={o} value={o}>
-              {o}
+              {field.optionLabels?.[o] || o}
             </option>
           ))}
         </select>
@@ -156,23 +173,7 @@ function FieldEditor({ field, value, onEdit }) {
 
 function ReadOnlyValue({ field, value }) {
   if (!isFilled(value)) return <span className="text-muted-foreground">—</span>;
-  if (field.type === "boolean") return <span>{value ? "Yes" : "No"}</span>;
-  if (field.type === "list") {
-    const cols = Object.entries(field.itemShape || { item: "string" });
-    return (
-      <ul className="space-y-1">
-        {value.map((row, i) => (
-          <li key={i}>
-            {cols
-              .map(([col, type]) => (type === "boolean" ? (row[col] ? col : null) : row[col]))
-              .filter((v) => v !== null && v !== undefined && v !== "")
-              .join(" · ")}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  return <span>{String(value)}</span>;
+  return <span>{formatSpecValue(field, value)}</span>;
 }
 
 export default function SpecPreview({ job, onFieldEdit, onConfirm }) {

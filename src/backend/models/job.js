@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { validateSpec, validationMessage } from "@/backend/services/jobSpec";
 
 const jobSchema = new mongoose.Schema(
   {
@@ -33,5 +34,17 @@ const jobSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+jobSchema.pre("validate", function validateDynamicSpec() {
+  const result = validateSpec(this.vertical, this.spec || {}, {
+    requireComplete: this.confirmed,
+  });
+  if (!result.valid) {
+    this.invalidate("spec", validationMessage(result.errors));
+    return;
+  }
+  this.spec = result.spec;
+  this.markModified("spec");
+});
 
 export default mongoose.models.Job || mongoose.model("Job", jobSchema);
