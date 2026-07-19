@@ -139,14 +139,14 @@ const clearPending = (session) => {
 const confirmationQuestion = (confirmations) => {
 	const lines = confirmations.map((item) => {
 		if (!item.alternatives?.length) {
-			return `${item.label}: I could not verify "${item.original}".`;
+			return `I couldn't find "${item.original}" on the map for the ${item.label.toLowerCase()}.`;
 		}
-		return `${item.label}: did you mean "${item.suggestion}"?`;
+		return `Quick check on the ${item.label.toLowerCase()}: I found "${item.suggestion}". That the one?`;
 	});
 	const hasUnresolved = confirmations.some((item) => !item.alternatives?.length);
 	return hasUnresolved
-		? `${lines.join("\n")}\nPlease send a more complete location, including the city and country.`
-		: `${lines.join("\n")}\nReply "yes" to use this, or send the correct location.`;
+		? `${lines.join("\n")}\nMind sending it again with the city (and country if it's outside the US)? No worries if there's no street number.`
+		: `${lines.join("\n")}\nA quick "yes" works, or just send the right one.`;
 };
 
 const savePatch = async (session, job, patch) => {

@@ -61,12 +61,36 @@ export default function NewJob() {
     }
   };
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (locationsReviewed) => {
     try {
-      const res = await fetch(`/api/jobs/${jobId}/confirm`, { method: "POST" });
+      const res = await fetch(`/api/jobs/${jobId}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationsReviewed: locationsReviewed === true }),
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not confirm the spec");
-      router.push(`/jobs/${jobId}`);
+      if (res.ok) {
+        router.push(`/jobs/${jobId}`);
+        return;
+      }
+      if (data.locationConfirmations?.length) {
+        for (const c of data.locationConfirmations) {
+          if (c.suggestion && c.suggestion !== c.original) {
+            const useSuggestion = window.confirm(
+              `${c.label}: did you mean "${c.suggestion}"?\n\nOK = use the suggestion, Cancel = keep "${c.original}".`,
+            );
+            if (useSuggestion) await handleFieldEdit(c.field, c.suggestion);
+          } else {
+            const keepAnyway = window.confirm(
+              `${c.label}: "${c.original}" could not be verified.\n\nOK = keep it anyway, Cancel = go back and edit.`,
+            );
+            if (!keepAnyway) return;
+          }
+        }
+        await handleConfirm(true);
+        return;
+      }
+      throw new Error(data.error || "Could not confirm the spec");
     } catch (err) {
       toast.error(err.message);
     }
