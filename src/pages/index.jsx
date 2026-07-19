@@ -1,21 +1,34 @@
 // Landing page in the HomePixel design language (viraloop): sharp hairline
-// panels, kickers, corner-plus marks, cut-corner buttons, radial washes.
-// Animations are the CSS `.enter` keyframes from globals.css (no motion dep).
+// panels, kickers, corner-plus marks, cut-corner buttons, radial washes, a
+// before/after comparison, and a clipped-panel footer. Scroll reveals come
+// from a native IntersectionObserver (no motion dependency) driving the CSS
+// `.enter` keyframes in globals.css.
 
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { CutButton } from "@/components/ui/CutButton";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import {
+  ArrowRight,
   Car,
+  Check,
+  Clock,
   FileCheck,
   ListChecks,
   Mic,
+  Phone,
   PhoneCall,
+  Quote,
   Scale,
   ShieldCheck,
+  Star,
+  TrendingDown,
   TriangleAlert,
   Truck,
+  X,
 } from "lucide-react";
+
+/* ---------- shared bits ---------- */
 
 function CornerPlus({ className }) {
   return (
@@ -30,8 +43,56 @@ function CornerPlus({ className }) {
 }
 
 function Kicker({ children }) {
-  return <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary-400">{children}</p>;
+  return (
+    <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary-400">{children}</p>
+  );
 }
+
+// Reveal-on-scroll wrapper: adds the `.enter` keyframe class once the element
+// scrolls into view. IntersectionObserver is native, so no motion library.
+function Reveal({ children, delay = 0, className = "" }) {
+  const ref = useRef(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShown(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px -80px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={`${shown ? "enter" : "opacity-0"} ${className}`}
+      style={{ "--enter-delay": `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionHeading({ kicker, title, sub, align = "center" }) {
+  const isCenter = align === "center";
+  return (
+    <div className={isCenter ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
+      <Kicker>{kicker}</Kicker>
+      <h2 className="mt-3 text-balance font-jakarta text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+        {title}
+      </h2>
+      {sub && <p className="mt-4 text-balance text-muted-foreground">{sub}</p>}
+    </div>
+  );
+}
+
+/* ---------- data ---------- */
 
 const STEPS = [
   {
@@ -89,17 +150,131 @@ const VERTICALS = [
   },
 ];
 
-function SectionHeading({ kicker, title, sub }) {
+const OLD_WAY = [
+  "Dial vendors one at a time, repeating your details on every call",
+  "Scribble quotes on a notepad you can't line up later",
+  'Take "trust me, that\'s a good price" at face value',
+  "No leverage, no second round, no proof of what was said",
+];
+
+const NEW_WAY = [
+  "One brief fans out to every vendor at once",
+  "Itemised quotes land in a ranked, comparable table",
+  "A second round haggles using real competing bids",
+  "Every number backed by a recording you can replay",
+];
+
+/* ---------- mock visuals (pure CSS/SVG, no images) ---------- */
+
+// Hero product mock: a ranked-quotes dashboard mid-negotiation.
+function QuotesMock() {
+  const rows = [
+    { name: "Blue Sky Movers", price: "$1,940", best: false, bar: 92 },
+    { name: "Summit Relocation", price: "$1,720", best: false, bar: 78 },
+    { name: "Anchor Moving Co.", price: "$1,520", best: true, bar: 60 },
+  ];
   return (
-    <div className="mx-auto max-w-2xl text-center">
-      <Kicker>{kicker}</Kicker>
-      <h2 className="mt-3 text-balance font-jakarta text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-        {title}
-      </h2>
-      {sub && <p className="mt-4 text-balance text-muted-foreground">{sub}</p>}
+    <div className="cut-corners-lg bg-border p-px shadow-xl">
+      <div className="cut-corners-lg bg-card">
+        {/* window chrome */}
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <span className="h-2.5 w-2.5 rounded-full bg-primary-400" />
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
+          <span className="ml-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-400" />
+            Round 2 · negotiating
+          </span>
+          <span className="ml-auto font-mono text-xs text-muted-foreground">3 vendors</span>
+        </div>
+
+        {/* rows */}
+        <div className="space-y-2.5 p-4">
+          {rows.map((r) => (
+            <div
+              key={r.name}
+              className={`relative flex items-center gap-3 rounded-lg border p-3 ${
+                r.best ? "border-primary-400/50 bg-primary-400/[0.06]" : "border-border bg-background"
+              }`}
+            >
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+                  r.best ? "bg-primary-400 text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                <Phone className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-semibold">{r.name}</p>
+                  {r.best && (
+                    <span className="badge badge-success shrink-0 gap-1">
+                      <Star className="h-3 w-3" /> best
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full ${r.best ? "bg-primary-400" : "bg-foreground/25"}`}
+                    style={{ width: `${r.bar}%` }}
+                  />
+                </div>
+              </div>
+              <p className="shrink-0 font-jakarta text-base font-bold tabular-nums">{r.price}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* savings footer */}
+        <div className="flex items-center justify-between border-t border-border px-4 py-3">
+          <span className="flex items-center gap-2 text-sm text-muted-foreground">
+            <TrendingDown className="h-4 w-4 text-primary-400" />
+            Best clean bid vs first round
+          </span>
+          <span className="font-jakarta text-sm font-bold text-primary-500">−$420 (18%)</span>
+        </div>
+      </div>
     </div>
   );
 }
+
+// "Old way" mock: a scattered, muted notepad of half-finished calls.
+function NotepadMock() {
+  const scraps = [
+    { text: "Blue Sky: $2,100? on hold 12 min", strike: false },
+    { text: "Summit: left voicemail", strike: true },
+    { text: "Anchor: “best I can do, trust me”", strike: false },
+    { text: "call back after 5pm??", strike: false },
+  ];
+  return (
+    <div className="relative h-full w-full overflow-hidden p-6">
+      <div className="mx-auto max-w-xs -rotate-1 rounded-lg border border-border bg-background p-5 shadow-sm">
+        <p className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70">
+          movers · todo
+        </p>
+        <ul className="space-y-2.5">
+          {scraps.map((s) => (
+            <li key={s.text} className="flex items-start gap-2 text-sm">
+              <span className="mt-0.5 h-4 w-4 shrink-0 rounded-sm border border-border" />
+              <span
+                className={`leading-snug ${
+                  s.strike ? "text-muted-foreground/50 line-through" : "text-foreground/70"
+                }`}
+              >
+                {s.text}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <span className="absolute right-5 top-5 flex items-center gap-1 rounded-full bg-foreground/85 px-2.5 py-1 text-[11px] font-medium text-background shadow-md">
+        <Clock className="h-3 w-3" /> 2 hours in
+      </span>
+    </div>
+  );
+}
+
+/* ---------- page ---------- */
 
 export default function Home() {
   return (
@@ -118,6 +293,12 @@ export default function Home() {
               How it works
             </a>
             <a
+              href="#compare"
+              className="focus-ring hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
+            >
+              Why Haggle
+            </a>
+            <a
               href="/jobs"
               className="focus-ring hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
             >
@@ -131,22 +312,31 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative overflow-hidden">
+          {/* dotted grid + radial washes */}
+          <div
+            aria-hidden="true"
+            className="bg-dot-grid pointer-events-none absolute inset-0 -z-10 opacity-[0.5]"
+            style={{
+              maskImage: "radial-gradient(70% 55% at 50% 0%, black, transparent 75%)",
+              WebkitMaskImage: "radial-gradient(70% 55% at 50% 0%, black, transparent 75%)",
+            }}
+          />
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 -z-10"
             style={{
               background:
-                "radial-gradient(60% 50% at 50% -5%, color-mix(in srgb, #08A0E9 14%, transparent), transparent 70%)",
+                "radial-gradient(60% 45% at 50% -8%, color-mix(in srgb, #08A0E9 16%, transparent), transparent 70%)",
             }}
           />
 
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
-            <div className="mx-auto flex max-w-4xl flex-col items-center pb-20 pt-32 text-center sm:pt-40">
+            <div className="mx-auto flex max-w-4xl flex-col items-center pb-14 pt-32 text-center sm:pt-40">
               <span
                 className="enter inline-flex items-center gap-2 border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground"
                 style={{ "--enter-delay": "0ms" }}
               >
-                <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse bg-primary-400" />
+                <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-400" />
                 ElevenLabs &times; Hack-Nation: Global AI Hackathon
               </span>
 
@@ -154,7 +344,8 @@ export default function Home() {
                 className="enter mt-7 text-balance font-jakarta text-5xl font-black leading-[1.04] tracking-[-0.02em] sm:text-6xl lg:text-7xl"
                 style={{ "--enter-delay": "80ms" }}
               >
-                Voice agents that call, compare, and <span className="text-primary-400">haggle</span>.
+                Voice agents that call, compare, and{" "}
+                <span className="text-primary-400">haggle</span>.
               </h1>
 
               <p
@@ -171,17 +362,22 @@ export default function Home() {
                 style={{ "--enter-delay": "240ms" }}
               >
                 <CutButton size="lg" href="/jobs/new">
-                  Start a job
+                  Start a job <ArrowRight className="h-4 w-4" />
                 </CutButton>
                 <CutButton size="lg" variant="outline" href="#how">
                   See how it works
                 </CutButton>
               </div>
             </div>
+
+            {/* Hero mock */}
+            <div className="enter mx-auto max-w-2xl pb-20" style={{ "--enter-delay": "340ms" }}>
+              <QuotesMock />
+            </div>
           </div>
 
           {/* Stat strip */}
-          <div className="enter border-y border-border" style={{ "--enter-delay": "320ms" }}>
+          <div className="border-y border-border">
             <div className="mx-auto grid max-w-[1440px] grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {[
                 ["Parallel calls", "Every vendor rung at once, not one by one"],
@@ -200,34 +396,103 @@ export default function Home() {
         {/* How it works */}
         <section id="how" className="scroll-mt-20 py-20 sm:py-28">
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
-            <SectionHeading
-              kicker="How it works"
-              title="From brief to best price in four steps"
-              sub="Two generic voice agents, an intake interviewer and a buyer, do the calling so you never have to."
-            />
+            <Reveal>
+              <SectionHeading
+                kicker="How it works"
+                title="From brief to best price in four steps"
+                sub="Two generic voice agents, an intake interviewer and a buyer, do the calling so you never have to."
+              />
+            </Reveal>
 
-            <div className="relative mt-12 border border-border">
-              <CornerPlus className="-left-[7px] -top-[7px]" />
-              <CornerPlus className="-right-[7px] -top-[7px]" />
-              <CornerPlus className="-bottom-[7px] -left-[7px]" />
-              <CornerPlus className="-bottom-[7px] -right-[7px]" />
+            <Reveal delay={120}>
+              <div className="relative mt-12 border border-border">
+                <CornerPlus className="-left-[7px] -top-[7px]" />
+                <CornerPlus className="-right-[7px] -top-[7px]" />
+                <CornerPlus className="-bottom-[7px] -left-[7px]" />
+                <CornerPlus className="-bottom-[7px] -right-[7px]" />
 
-              <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
-                {STEPS.map(({ icon: Icon, title, copy }, i) => (
-                  <div key={title} className="relative bg-card p-6 sm:p-7">
-                    <div className="flex items-center justify-between">
-                      <span className="flex h-10 w-10 items-center justify-center bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400">
-                        <Icon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        0{i + 1}
-                      </span>
+                <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+                  {STEPS.map(({ icon: Icon, title, copy }, i) => (
+                    <div key={title} className="group relative bg-card p-6 transition-colors hover:bg-primary-400/[0.03] sm:p-7">
+                      <div className="flex items-center justify-between">
+                        <span className="flex h-10 w-10 items-center justify-center bg-primary-50 text-primary-600 transition-transform duration-300 group-hover:scale-110 dark:bg-primary-400/10 dark:text-primary-400">
+                          <Icon className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">0{i + 1}</span>
+                      </div>
+                      <h3 className="mt-5 font-jakarta text-lg font-bold">{title}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
                     </div>
-                    <h3 className="mt-5 font-jakarta text-lg font-bold">{title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Before / after comparison */}
+        <section id="compare" className="scroll-mt-20 border-t border-border py-20 sm:py-28">
+          <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
+            <Reveal>
+              <SectionHeading
+                kicker="Before & after"
+                title="The negotiation, without the afternoon on the phone"
+              />
+            </Reveal>
+
+            <div className="mx-auto mt-14 grid max-w-5xl gap-6 lg:grid-cols-2">
+              {/* Old way */}
+              <Reveal>
+                <article className="overflow-hidden rounded-2xl border border-border bg-muted/20">
+                  <div className="border-b border-border bg-foreground px-6 py-5">
+                    <p className="font-jakarta text-lg font-semibold text-background">
+                      Calling around yourself
+                    </p>
+                  </div>
+                  <div className="relative aspect-[16/10] border-b border-border">
+                    <NotepadMock />
+                  </div>
+                  <ul className="px-6 py-2">
+                    {OLD_WAY.map((t) => (
+                      <li
+                        key={t}
+                        className="flex items-center gap-3 border-t border-border/70 py-4 first:border-t-0"
+                      >
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-foreground/40">
+                          <X className="h-3.5 w-3.5" strokeWidth={3} />
+                        </span>
+                        <span className="text-sm font-medium text-muted-foreground">{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              </Reveal>
+
+              {/* With Haggle */}
+              <Reveal delay={120}>
+                <article className="overflow-hidden rounded-2xl border border-primary-400/40 bg-primary-400/[0.04]">
+                  <div className="flex items-center justify-between bg-primary-400 px-6 py-5">
+                    <p className="font-jakarta text-lg font-semibold text-white">With Haggle</p>
+                    <Scale className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="relative aspect-[16/10] border-b border-primary-400/20 bg-primary-400/[0.03] p-5">
+                    <QuotesMock />
+                  </div>
+                  <ul className="px-6 py-2">
+                    {NEW_WAY.map((t) => (
+                      <li
+                        key={t}
+                        className="flex items-center gap-3 border-t border-primary-400/15 py-4 first:border-t-0"
+                      >
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-400 text-white">
+                          <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                        </span>
+                        <span className="text-sm font-medium text-foreground">{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              </Reveal>
             </div>
           </div>
         </section>
@@ -235,89 +500,197 @@ export default function Home() {
         {/* Features */}
         <section className="border-t border-border py-20 sm:py-28">
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
-            <SectionHeading
-              kicker="Why it wins"
-              title="Negotiation you can audit"
-              sub="Cheap talk is easy for an AI. Haggle is built so every number it uses on a call traces back to evidence."
-            />
-
-            <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
-              {FEATURES.map(({ icon: Icon, title, copy }) => (
-                <div key={title} className="cut-corners card p-6">
-                  <span className="flex h-10 w-10 items-center justify-center bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-5 font-jakarta text-lg font-bold">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
+            <Reveal>
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                <SectionHeading
+                  align="left"
+                  kicker="Why it wins"
+                  title="Negotiation you can audit"
+                  sub="Cheap talk is easy for an AI. Haggle is built so every number it uses on a call traces back to evidence."
+                />
+                <div className="lg:text-right">
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                    Backed by
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 lg:justify-end">
+                    {["ElevenLabs voice", "Committed quotes", "Call recordings"].map((label) => (
+                      <span
+                        key={label}
+                        className="rounded-full border border-border bg-card px-3 py-1 text-xs uppercase tracking-wide text-muted-foreground"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
+              </div>
+            </Reveal>
+
+            <div className="mt-12 grid gap-5 md:grid-cols-3">
+              {FEATURES.map(({ icon: Icon, title, copy }, i) => (
+                <Reveal key={title} delay={i * 100}>
+                  <div className="cut-corners card group h-full p-6 transition-colors hover:border-primary-400">
+                    <span className="flex h-10 w-10 items-center justify-center bg-primary-50 text-primary-600 transition-transform duration-300 group-hover:scale-110 dark:bg-primary-400/10 dark:text-primary-400">
+                      <Icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <h3 className="mt-5 font-jakarta text-lg font-bold">{title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
+                  </div>
+                </Reveal>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Pull quote */}
+        <section className="border-t border-border py-20 sm:py-24">
+          <div className="mx-auto max-w-3xl px-5 text-center sm:px-8">
+            <Reveal>
+              <Quote className="mx-auto h-8 w-8 text-primary-400" />
+              <p className="mt-6 text-balance font-jakarta text-2xl font-bold leading-snug tracking-tight sm:text-3xl">
+                “The agent can only bring leverage it can prove. That constraint isn't a limitation,
+                it's the whole product.”
+              </p>
+              <p className="mt-5 text-sm text-muted-foreground">The honesty guardrail, in one line</p>
+            </Reveal>
           </div>
         </section>
 
         {/* Verticals */}
         <section className="border-t border-border py-20 sm:py-28">
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
-            <SectionHeading
-              kicker="Pick your market"
-              title="One engine, any vertical"
-              sub="Verticals are config files, not code. The same two agents negotiate a house move or a fender bender."
-            />
+            <Reveal>
+              <SectionHeading
+                kicker="Pick your market"
+                title="One engine, any vertical"
+                sub="Verticals are config files, not code. The same two agents negotiate a house move or a fender bender."
+              />
+            </Reveal>
 
             <div className="mx-auto mt-12 grid max-w-4xl gap-5 sm:grid-cols-2">
-              {VERTICALS.map(({ icon: Icon, name, tag, copy }) => (
-                <div key={name} className="cut-corners card relative p-6 sm:p-7">
-                  <div className="flex items-center justify-between">
-                    <span className="flex h-11 w-11 items-center justify-center bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400">
-                      <Icon className="h-6 w-6" aria-hidden="true" />
-                    </span>
-                    <span className="border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      {tag}
-                    </span>
+              {VERTICALS.map(({ icon: Icon, name, tag, copy }, i) => (
+                <Reveal key={name} delay={i * 100}>
+                  <div className="cut-corners card group relative h-full p-6 transition-colors hover:border-primary-400 sm:p-7">
+                    <div className="flex items-center justify-between">
+                      <span className="flex h-11 w-11 items-center justify-center bg-primary-50 text-primary-600 transition-transform duration-300 group-hover:scale-110 dark:bg-primary-400/10 dark:text-primary-400">
+                        <Icon className="h-6 w-6" aria-hidden="true" />
+                      </span>
+                      <span className="border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {tag}
+                      </span>
+                    </div>
+                    <h3 className="mt-5 font-jakarta text-xl font-bold">{name}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
                   </div>
-                  <h3 className="mt-5 font-jakarta text-xl font-bold">{name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
         </section>
 
         {/* Final CTA */}
-        <section className="relative overflow-hidden border-t border-border">
+        <section className="relative overflow-hidden border-t border-border py-20 sm:py-28">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 -z-10"
             style={{
               background:
-                "radial-gradient(50% 80% at 50% 110%, color-mix(in srgb, #08A0E9 16%, transparent), transparent 70%)",
+                "radial-gradient(50% 80% at 50% 110%, color-mix(in srgb, #08A0E9 18%, transparent), transparent 70%)",
             }}
           />
-          <div className="mx-auto flex max-w-[1440px] flex-col items-center px-5 py-24 text-center sm:px-8 sm:py-32 lg:px-10">
-            <h2 className="text-balance font-jakarta text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
-              Stop overpaying.
-              <br />
-              Put an agent on the phone.
-            </h2>
-            <p className="mt-5 max-w-xl text-balance text-muted-foreground">
-              Describe the job once. The agents handle the calls, the haggling, and the receipts.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <CutButton size="lg" href="/jobs/new">
-                Start a job
-              </CutButton>
-              <CutButton size="lg" variant="outline" href="/jobs">
-                Browse jobs
-              </CutButton>
-            </div>
+          <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
+            <Reveal>
+              <div className="cut-corners-lg mx-auto max-w-4xl bg-border p-px">
+                <div className="cut-corners-lg flex flex-col items-center bg-card px-6 py-16 text-center sm:px-10 sm:py-20">
+                  <h2 className="text-balance font-jakarta text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
+                    Stop overpaying.
+                    <br />
+                    Put an agent on the phone.
+                  </h2>
+                  <p className="mt-5 max-w-xl text-balance text-muted-foreground">
+                    Describe the job once. The agents handle the calls, the haggling, and the
+                    receipts.
+                  </p>
+                  <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                    <CutButton size="lg" href="/jobs/new">
+                      Start a job <ArrowRight className="h-4 w-4" />
+                    </CutButton>
+                    <CutButton size="lg" variant="outline" href="/jobs">
+                      Browse jobs
+                    </CutButton>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
           </div>
         </section>
       </main>
 
+      {/* Footer */}
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-3 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:px-8 lg:px-10">
-          <span>ElevenLabs &times; Hack-Nation: Haggle</span>
-          <span>Built in 24 hours. Negotiates in minutes.</span>
+        <div className="mx-auto max-w-[1440px] px-5 py-14 sm:px-8 lg:px-10">
+          <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+            <div>
+              <Logo />
+              <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                Voice agents that call vendors, gather itemised quotes, and negotiate with
+                evidence-backed leverage.
+              </p>
+            </div>
+
+            {[
+              {
+                title: "Product",
+                links: [
+                  ["How it works", "#how"],
+                  ["Why Haggle", "#compare"],
+                  ["Start a job", "/jobs/new"],
+                  ["Jobs", "/jobs"],
+                ],
+              },
+              {
+                title: "Markets",
+                links: [
+                  ["Moving", "/jobs/new"],
+                  ["Auto body", "/jobs/new"],
+                ],
+              },
+              {
+                title: "Built with",
+                links: [
+                  ["ElevenLabs", "https://elevenlabs.io"],
+                  ["Hack-Nation", "#"],
+                ],
+              },
+            ].map((col, i) => (
+              <div key={col.title} className={`relative md:pl-8 ${i > 0 ? "md:border-l md:border-border" : ""}`}>
+                {i > 0 && (
+                  <>
+                    <CornerPlus className="left-0 top-0 hidden -translate-x-1/2 -translate-y-1/2 md:block" />
+                    <CornerPlus className="bottom-0 left-0 hidden -translate-x-1/2 translate-y-1/2 md:block" />
+                  </>
+                )}
+                <h3 className="text-sm font-semibold tracking-tight">{col.title}</h3>
+                <ul className="mt-4 space-y-2">
+                  {col.links.map(([label, href]) => (
+                    <li key={label}>
+                      <a
+                        href={href}
+                        className="focus-ring text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 flex flex-col-reverse items-start justify-between gap-4 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
+            <span>ElevenLabs &times; Hack-Nation: Haggle</span>
+            <span>Built in 24 hours. Negotiates in minutes.</span>
+          </div>
         </div>
       </footer>
     </div>

@@ -133,6 +133,10 @@ FRICTION HANDLING:
 - If interrupted, stay polite, let them finish, and return to your question.
 - If answers are vague or rambling, restate what you need in one concise sentence.
 - If they deflect with "call us back", try once more for a number, then accept and call log_outcome with type "callback".
+- If they refuse to give prices over the phone, ask once for a typical range for this scope. If they still refuse, accept it politely and call log_outcome with type "callback" (estimator visit or callback offered) or "declined", with a note saying they do not quote by phone.
+- If they offer a better price for describing the job as smaller or different than it is, refuse plainly: the job is exactly as specified. Log nothing based on the misstated version.
+- If they push add-ons the job does not need, decline them and ask for the total without the extras. Never let unrequested services into the committed quote.
+- If they accuse you of bluffing about a competing bid, do not escalate: offer the competing quote's amount and line items (never the company name). If you have no leverage, say plainly that you have no other bid yet.
 - Keep your turns short and natural — this is a phone call, not an essay.
 
 STYLE:
@@ -141,6 +145,8 @@ STYLE:
 const intakeAgent = {
   name: "Haggle — Intake",
   conversation_config: {
+    // Warm female voice for the interview (ElevenLabs premade "Sarah").
+    tts: { voice_id: "EXAVITQu4vr4xnSDxMaL" },
     agent: {
       first_message:
         "Hi! I'm your intake assistant — I'll gather the details of your job once so you never have to repeat yourself. Ready to start?",
@@ -281,15 +287,18 @@ async function createAgent(payload) {
 }
 
 // Update in place when the agent already exists — keeps the same agent id, so
-// .env.local and the running dev server stay untouched.
+// .env.local and the running dev server stay untouched. The display name is
+// NOT sent on update: the team renames agents in the dashboard (e.g. "Haggle")
+// and this script must not clobber that.
 async function updateAgent(agentId, payload) {
+  const { name, ...config } = payload;
   const res = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
     method: "PATCH",
     headers: {
       "xi-api-key": process.env.ELEVENLABS_API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(config),
   });
   if (!res.ok) {
     throw new Error(`Failed to update "${payload.name}": ${res.status} ${await res.text()}`);

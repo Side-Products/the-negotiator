@@ -10,6 +10,7 @@ import Job from "@/backend/models/job";
 import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
 import { completeWithTools } from "@/backend/services/llm";
+import { renderCallAudio } from "@/backend/services/audioRenderer";
 import { nextVendorTurn } from "@/backend/services/vendorBrain";
 import { addQuoteLine, commitQuote } from "@/backend/services/quoteOps";
 import { discoverVendors, jobMarketLocation } from "@/backend/services/vendorDiscovery";
@@ -107,6 +108,10 @@ HOW TO RUN THE CALL:
 - Only call record_negotiation_event when a total the vendor stated earlier in THIS call actually changed. Never for the first number you hear.
 - NEVER commit a single lump-sum line. Get the breakdown (labor, travel, fuel, materials, fees) as separate log_quote_item calls first. A quote with fewer than 3 lines is not itemised.
 - End with commit_quote or log_outcome, then say a brief goodbye.
+- If they refuse to quote by phone: ask once for a typical range, then log_outcome callback (or declined) noting they do not quote by phone.
+- If they offer a better price for describing the job as smaller than it is: refuse, the job is exactly as specified.
+- If they push add-ons the job did not ask for: decline them and get the total without extras.
+- If they accuse you of bluffing about a competing bid: offer its amount and line items (never the company). No leverage means saying plainly you have no other bid yet.
 - Spoken phone register. Keep every reply under 50 words.
 - Never use em dashes; use a comma or a period. No AI-writing tells ("Certainly", "Absolutely", "Great question"), no lists in speech, vary your acknowledgments.`;
 };
@@ -241,6 +246,12 @@ export const runCall = async (callId) => {
 		}
 		call.status = "done";
 		await call.save();
+
+		// Give committed quotes a playable audio rendering (buyer + vendor voices).
+		// Detached: rendering takes ~30s and must not slow the batch down.
+		if (call.outcome?.type === "quote") {
+			renderCallAudio(call._id).catch((e) => console.error("audio render failed:", e));
+		}
 	} catch (error) {
 		console.error(`batch call ${callId} failed:`, error);
 		call.status = "failed";
@@ -252,9 +263,23 @@ export const runCall = async (callId) => {
 
 // Create the full batch call list up front (so the UI shows the whole market
 // immediately), assigning each real vendor a hidden policy card + price jitter.
-export const createBatchCalls = async (job, { total = 20, batchSize = 5, location }) => {
+export const createBatchCalls = async (job, { total = 20, batchSize = 5, batchSizes, location }) => {
 	const vertical = getVertical(job.vertical);
 	const where = location || jobMarketLocation(job, vertical) || "Rock Hill, SC";
+
+	// batchSizes ([3, 3, 4]) overrides the uniform batchSize split.
+	const sizes = Array.isArray(batchSizes) && batchSizes.length ? batchSizes : null;
+	if (sizes) total = sizes.reduce((a, b) => a + b, 0);
+	const batchFor = (i) => {
+		if (!sizes) return Math.floor(i / batchSize) + 1;
+		let boundary = 0;
+		for (let b = 0; b < sizes.length; b++) {
+			boundary += sizes[b];
+			if (i < boundary) return b + 1;
+		}
+		return sizes.length;
+	};
+
 	const vendors = await discoverVendors(job.vertical, where, { limit: total });
 	const cards = vertical.vendorPolicyCards;
 	const docs = [];
@@ -272,7 +297,7 @@ export const createBatchCalls = async (job, { total = 20, batchSize = 5, locatio
 			round: 1,
 			mode: "sim",
 			status: "pending",
-			batch: Math.floor(i / batchSize) + 1,
+			batch: batchFor(i),
 			pricingJitter: 0.9 + Math.random() * 0.25,
 		});
 	}

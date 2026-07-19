@@ -8,6 +8,7 @@ import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { ExternalLink, Star } from "lucide-react";
 import { toast } from "sonner";
 import TranscriptView from "@/components/calls/TranscriptView";
+import { noEmDash } from "@/lib/utils";
 
 async function api(url, method = "GET", body) {
   const res = await fetch(url, {
@@ -293,12 +294,24 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
         ) : mode === "real" ? (
           <>
             <span className="badge badge-warning">real call</span>
+            {call.batch && <span className="badge badge-info">batch {call.batch}</span>}
             {call.phone && <span>{call.phone}</span>}
+            {call.statusDetail && displayStatus === "live" && (
+              <span className="inline-flex items-center gap-1.5 text-foreground">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-success-500" aria-hidden="true" />
+                {call.statusDetail}
+              </span>
+            )}
+          </>
+        ) : call.batch ? (
+          <>
+            <span className="badge badge-info">auto (batch {call.batch})</span>
+            {displayStatus === "pending" && <span>waiting for its batch…</span>}
           </>
         ) : (
           <>
-            <span className="badge badge-info">auto (batch {call.batch || "?"})</span>
-            {displayStatus === "pending" && <span>waiting for its batch…</span>}
+            <span className="badge bg-foreground text-background">agent vs agent</span>
+            {connected && <span>buyer live, vendor speaks via TTS, mic muted</span>}
           </>
         )}
       </div>
@@ -330,6 +343,26 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
         </div>
       </div>
 
+      {/* Live caption: the latest utterance, so a busy call grid visibly talks
+          without opening every transcript. */}
+      {displayStatus === "live" && displayTurns.length > 0 && !showTranscript && (
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <span
+            className="mt-1 h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-success-500"
+            aria-hidden="true"
+          />
+          <span className="line-clamp-2">
+            <span className="font-medium text-foreground">
+              {["agent", "buyer", "assistant"].includes(displayTurns[displayTurns.length - 1].role)
+                ? "Buyer"
+                : "Vendor"}
+              :
+            </span>{" "}
+            {noEmDash(displayTurns[displayTurns.length - 1].text)}
+          </span>
+        </p>
+      )}
+
       {/* Transcript */}
       <button
         onClick={() => setShowTranscript((s) => !s)}
@@ -339,9 +372,10 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
       </button>
       {showTranscript && <TranscriptView transcript={displayTurns} />}
 
-      {/* Only role-play calls are started from the browser; sim calls are
-          driven by the server-side batch runner. */}
-      {mode === "roleplay" && (
+      {/* Browser-started calls: role-play (human vendor via mic) and live sim
+          (agent vs agent, audible). Batch sim and real calls are server-driven
+          and have no start button. */}
+      {(mode === "roleplay" || (mode === "sim" && !call.batch)) && (
         <div className="mt-auto flex gap-2 border-t border-border pt-3">
           {connected ? (
             <button onClick={() => endSession()} className="btn bg-error-500 text-white hover:bg-error-600">
@@ -349,7 +383,13 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
             </button>
           ) : (
             <button onClick={start} disabled={!canStart} className="btn btn-primary disabled:opacity-50">
-              {starting ? "Connecting…" : displayStatus === "failed" ? "Retry call" : "Answer as vendor"}
+              {starting
+                ? "Connecting…"
+                : displayStatus === "failed"
+                  ? "Retry call"
+                  : mode === "roleplay"
+                    ? "Answer as vendor"
+                    : "Run agent vs agent"}
             </button>
           )}
         </div>

@@ -23,8 +23,8 @@ export default async function handler(req, res) {
 			return res.status(200).json({ calls: existing, alreadyRunning: true });
 		}
 
-		const { total = 20, batchSize = 5, location } = req.body || {};
-		const calls = await createBatchCalls(job, { total, batchSize, location });
+		const { total = 20, batchSize = 5, batchSizes, location } = req.body || {};
+		const calls = await createBatchCalls(job, { total, batchSize, batchSizes, location });
 		job.status = "calling";
 		await job.save();
 

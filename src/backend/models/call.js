@@ -19,6 +19,7 @@ const callSchema = new mongoose.Schema(
       enum: ["pending", "live", "done", "failed"],
       default: "pending",
     },
+    statusDetail: { type: String }, // real calls: dialing / in-progress / processing…
     elevenConversationId: { type: String },
     transcript: [
       {

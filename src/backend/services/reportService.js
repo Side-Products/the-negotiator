@@ -32,6 +32,26 @@ export const generateReport = async (jobId) => {
     nonLowball.find((q) => q.guaranteed) || nonLowball[0] || active[0] || null;
 
   const callById = Object.fromEntries(calls.map((c) => [c._id.toString(), c]));
+
+  // Structured non-quotes are evidence too: the report must account for every
+  // call, not just the ones that produced a number.
+  const quotedCallIds = new Set(quotes.map((q) => q.callId?.toString()));
+  const nonQuoted = calls
+    .filter(
+      (c) =>
+        ["callback", "declined"].includes(c.outcome?.type) && !quotedCallIds.has(c._id.toString()),
+    )
+    .map((c) => ({
+      callId: c._id.toString(),
+      vendorName: c.vendorName,
+      outcome: c.outcome?.type,
+      note: c.outcome?.note,
+      transcript: (c.transcript || []).map((t) => ({
+        turnIndex: t.turnIndex,
+        role: t.role,
+        text: t.text,
+      })),
+    }));
   const evidence = active.map((q) => {
     const call = callById[q.callId?.toString()];
     return {
@@ -75,6 +95,7 @@ RULES
 - Plain language a homeowner understands. No jargon, no markdown headings, short paragraphs.
 - Never use em dashes; use commas, colons, or periods. Avoid AI-writing patterns: no "delve", "It's worth noting", "In conclusion", no bullet lists, no hedging boilerplate.
 - Explain the recommendation, the risks on the cheaper options, and any price movement caused by negotiation (before vs after, and what leverage caused it).
+- Account for every call: vendors who requested a callback or declined get one short sentence each on how the call ended and why, with a citation. A documented refusal is information about the market, not a gap in the report.
 - Market context: mid $${vertical.benchmarks.marketMid}, range $${vertical.benchmarks.marketMin}-$${vertical.benchmarks.marketMax} (${vertical.benchmarks.source}).`,
     messages: [
       {
@@ -85,6 +106,9 @@ Recommended quoteId: ${recommended?._id?.toString() || "none"}
 
 Quotes with evidence:
 ${JSON.stringify(evidence)}
+
+Vendors who did not quote (callbacks/declines, with transcripts):
+${JSON.stringify(nonQuoted)}
 
 Write the report narrative.`,
       },

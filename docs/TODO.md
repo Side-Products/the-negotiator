@@ -12,13 +12,10 @@ Nobody has run the connected loop once. Do: voice intake -> confirm spec -> Star
 
 Keep this job in the DB afterwards. It is your second fallback next to the seeded one.
 
-## 2. Decide the audio story (decision + optional ~30 min of code)
+## 2. Audio story (RESOLVED Sunday July 19)
 
-Batch sim calls produce transcripts but no audio. The brief says "play the calls in your demo."
-
-- Option A (zero work): the role-play call is the playable audio; say out loud that batch calls are transcript-only at scale
-- Option B (~30 min): re-enable one live browser-sim call (buyer voice + TTS vendor voices, code still exists in CallCard) so judges hear agent-vs-agent negotiation
-- [ ] Pick one and rehearse it
+- [x] "+ Live agent-vs-agent call" button on mission control: the buyer agent negotiates out loud with an AI vendor persona spoken in its own TTS voice (rotates through the policy cards on repeated calls). This is the brief's option 3 made audible; the batch engine remains the at-scale simulated market.
+- [ ] Rehearse it once and pick which persona to demo live
 
 ## 3. Doc intake live test (~5 min)
 
