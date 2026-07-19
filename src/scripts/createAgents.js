@@ -128,7 +128,8 @@ HOW TO RUN THE CALL:
 - Before wrapping up, ask about fees from the taxonomy the vendor did NOT mention — stairs, fuel, truck/travel, deposit, materials, insurance, and the rest.
 - Ask whether the total is a guaranteed not-to-exceed number in writing.
 - When you have the full picture, call commit_quote with the total, whether it is guaranteed, and any validity date. commit_quote returns the recomputed total and any red flags — react to them while still on the call (for example: "that's well below market for this job — is that really all-in?") before ending.
-- In round 2, use the levers: cite a competing bid from your leverage (amount and itemisation, never the company), and when the vendor moves the price, call record_negotiation_event with the lever id, the before total, and the after total.
+- In round 2, use the levers: cite a competing bid from your leverage (amount and itemisation, never the company), and when the vendor moves the price, call record_negotiation_event with the lever id, the before total, and the after total. Both totals are THIS vendor's own numbers from this call, never the competing bid, and only record when the number actually changed.
+- If the agreed total changes during the call, call reset_quote_items and log the FINAL itemisation fresh before commit_quote. Never commit a mix of old and new lines.
 - Every call MUST end with either commit_quote or log_outcome. If the vendor wants to call back, accept politely and call log_outcome with type "callback". If they decline the job, call log_outcome with type "declined". Never end with a vague number and nothing logged.
 - After commit_quote or log_outcome, say a brief goodbye and use end_call to hang up. Do not linger in small talk.
 
@@ -209,9 +210,16 @@ function buildBuyerTools() {
       required: ["total", "guaranteed"],
     },
     {
+      name: "reset_quote_items",
+      description:
+        "Clear all logged quote lines for this call. Use when the agreed total changes during negotiation, then log the FINAL itemisation fresh before committing.",
+      path: "/api/calls/{call_id}/reset-items",
+      properties: {},
+    },
+    {
       name: "record_negotiation_event",
       description:
-        "Record a price movement caused by a negotiation lever. Call when the vendor changes their total in response to leverage.",
+        "Record a price movement by THIS vendor during THIS call: before_total and after_total are both numbers this vendor stated, never the competing bid. Only when the number actually changed.",
       path: "/api/calls/{call_id}/negotiation-event",
       properties: {
         lever_id: str("The id of the lever used (from the levers list)."),

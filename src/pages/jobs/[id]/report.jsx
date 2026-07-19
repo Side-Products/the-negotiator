@@ -47,14 +47,15 @@ function renderWithCitations(text, calls, onCite) {
 
 function roundTwoDelta(call, quote, quotes) {
   if (call?.round !== 2) return null;
+  // "after" is always the COMMITTED total: mid-call offers recorded as events
+  // do not always survive to the final agreement. "before" prefers the same
+  // vendor's superseded round-1 quote, else the first recorded movement.
   const events = call.negotiationEvents || [];
-  let before = events[0]?.beforeTotal;
-  let after = events[events.length - 1]?.afterTotal;
-  if (before == null && quote?.supersedes) {
-    before = quotes.find((q) => q._id === quote.supersedes)?.total;
-    after = quote?.total;
-  }
-  if (before == null || after == null) return null;
+  const before =
+    (quote?.supersedes && quotes.find((q) => q._id === quote.supersedes)?.total) ??
+    events[0]?.beforeTotal;
+  const after = quote?.total;
+  if (before == null || after == null || before === after) return null;
   return { before, after };
 }
 

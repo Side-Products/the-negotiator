@@ -168,6 +168,11 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
       const data = await api(`/api/calls/${call._id}/leverage`);
       return JSON.stringify(data.leverage || []);
     }),
+    reset_quote_items: tool(async () => {
+      const data = await api(`/api/calls/${call._id}/reset-items`, "POST", {});
+      onChanged?.();
+      return JSON.stringify(data);
+    }),
   };
 
   const finish = async () => {

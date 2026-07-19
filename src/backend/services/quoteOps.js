@@ -5,6 +5,14 @@ import Quote from "@/backend/models/quote";
 import Call from "@/backend/models/call";
 import { evaluate } from "@/backend/services/redFlagService";
 
+// When the deal changes mid-negotiation, stale lines must not pollute the
+// commit (the recompute-from-lines rule would override the agent's correct
+// final total with an inflated sum).
+export const resetQuoteLines = async (call) => {
+	await Quote.deleteMany({ callId: call._id, committed: false });
+	return { ok: true, note: "Uncommitted lines cleared. Log the final itemisation, then commit." };
+};
+
 export const addQuoteLine = async (call, { feeKey, label, amount, note, turnRef }) => {
 	// Atomic upsert-and-push: overlapping calls must not split lines across docs.
 	const quote = await Quote.findOneAndUpdate(

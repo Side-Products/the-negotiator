@@ -15,18 +15,26 @@ export const generateReport = async (jobId) => {
   const calls = await Call.find({ jobId });
   const quotes = await Quote.find({ jobId, committed: true });
 
-  // A round-2 quote supersedes the same vendor's round-1 quote — rank only the live ones.
-  const supersededIds = new Set(quotes.map((q) => q.supersedes?.toString()).filter(Boolean));
   const riskMultiplier = vertical.benchmarks.riskMultiplier || 1.3;
-  // Deal brain: rank by risk-adjusted cost, not sticker price. An unguaranteed
-  // or red-flagged quote carries an expected overrun (see utils.riskAdjustedTotal).
-  const active = quotes
-    .filter((q) => !supersededIds.has(q._id.toString()))
-    .sort(
-      (a, b) =>
-        riskAdjustedTotal(a, riskMultiplier) - riskAdjustedTotal(b, riskMultiplier) ||
-        (a.total || 0) - (b.total || 0),
-    );
+  const callByIdForRanking = Object.fromEntries(calls.map((c) => [c._id.toString(), c]));
+  // Deal brain: one offer per vendor, and it is that vendor's BEST committed
+  // quote by risk-adjusted cost, whatever round produced it. A round-2 call
+  // that lands worse than round 1 must not replace the better offer.
+  const bestByVendor = new Map();
+  for (const q of quotes) {
+    const vendor = callByIdForRanking[q.callId?.toString()]?.vendorName || q.callId?.toString();
+    const current = bestByVendor.get(vendor);
+    if (!current || riskAdjustedTotal(q, riskMultiplier) < riskAdjustedTotal(current, riskMultiplier)) {
+      bestByVendor.set(vendor, q);
+    }
+  }
+  // Rank by risk-adjusted cost, not sticker price. An unguaranteed or
+  // red-flagged quote carries an expected overrun (see utils.riskAdjustedTotal).
+  const active = [...bestByVendor.values()].sort(
+    (a, b) =>
+      riskAdjustedTotal(a, riskMultiplier) - riskAdjustedTotal(b, riskMultiplier) ||
+      (a.total || 0) - (b.total || 0),
+  );
 
   const ranking = active.map((q, i) => ({
     quoteId: q._id,

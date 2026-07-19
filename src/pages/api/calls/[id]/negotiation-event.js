@@ -17,6 +17,10 @@ export default async function handler(req, res) {
     if (!lever_id) {
       return res.status(400).json({ error: "lever_id is required" });
     }
+    // A "movement" where nothing moved is evidence pollution, not evidence.
+    if (Number(before_total) === Number(after_total)) {
+      return res.status(200).json({ ok: false, note: "Not recorded: the price did not change." });
+    }
 
     call.negotiationEvents.push({
       leverId: lever_id,

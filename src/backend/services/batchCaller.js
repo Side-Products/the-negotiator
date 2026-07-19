@@ -13,7 +13,7 @@ import { buildLeverage } from "@/backend/services/agentVars";
 import { completeWithTools } from "@/backend/services/llm";
 import { renderCallAudio } from "@/backend/services/audioRenderer";
 import { nextVendorTurn } from "@/backend/services/vendorBrain";
-import { addQuoteLine, commitQuote } from "@/backend/services/quoteOps";
+import { addQuoteLine, commitQuote, resetQuoteLines } from "@/backend/services/quoteOps";
 import { discoverVendors, jobMarketLocation } from "@/backend/services/vendorDiscovery";
 
 const MAX_BUYER_TURNS = 24; // hard stop per call
@@ -48,8 +48,15 @@ const BUYER_TOOLS = [
 		},
 	},
 	{
+		name: "reset_quote_items",
+		description:
+			"Clear all logged quote lines for this call. Use when the agreed total changes during negotiation, then log the FINAL itemisation fresh before committing.",
+		schema: { type: "object", properties: {} },
+	},
+	{
 		name: "record_negotiation_event",
-		description: "Record a price movement caused by a negotiation lever.",
+		description:
+			"Record a price movement by THIS vendor during THIS call: before_total and after_total are both numbers this vendor stated, never the competing bid. Only when the number actually changed.",
 		schema: {
 			type: "object",
 			properties: {
@@ -107,7 +114,8 @@ HOW TO RUN THE CALL:
 - Call log_quote_item the moment any fee or line item is stated. Before wrapping up, ask about taxonomy fees the vendor did not mention.
 - Ask whether the total is a guaranteed not-to-exceed number in writing.
 - If you have leverage, use it: cite the amount and itemisation, and when the vendor moves call record_negotiation_event.
-- Only call record_negotiation_event when a total the vendor stated earlier in THIS call actually changed. Never for the first number you hear.
+- record_negotiation_event is for THIS vendor's own numbers only: before_total is what they said earlier in this call, after_total is what they moved to. Never use the competing bid as before_total, never record when nothing changed.
+- If the agreed total changes during the call, call reset_quote_items and then log the FINAL itemisation fresh before commit_quote. Never commit a mix of old and new lines.
 - NEVER commit a single lump-sum line. Get the breakdown (labor, travel, fuel, materials, fees) as separate log_quote_item calls first. A quote with fewer than 3 lines is not itemised.
 - End with commit_quote or log_outcome, then say a brief goodbye.
 - If they refuse to quote by phone: ask once for a typical range, then log_outcome callback (or declined) noting they do not quote by phone.
@@ -218,17 +226,25 @@ const runCallInner = async (callId) => {
 								turnRef,
 							});
 						}
+					} else if (tu.name === "reset_quote_items") {
+						result = await resetQuoteLines(call);
 					} else if (tu.name === "record_negotiation_event") {
-						call.negotiationEvents.push({
-							leverId: tu.input.lever_id,
-							beforeTotal: tu.input.before_total,
-							afterTotal: tu.input.after_total,
-							citedQuoteId: (call.leverageQuoteIds || [])[0],
-							turnRef,
-							note: tu.input.note,
-						});
-						await call.save();
-						result = { ok: true };
+						// No-op "movements" and leverage-bid-as-before pollute the
+						// evidence chain; store only real changes.
+						if (tu.input.before_total === tu.input.after_total) {
+							result = { ok: false, note: "Not recorded: the price did not change." };
+						} else {
+							call.negotiationEvents.push({
+								leverId: tu.input.lever_id,
+								beforeTotal: tu.input.before_total,
+								afterTotal: tu.input.after_total,
+								citedQuoteId: (call.leverageQuoteIds || [])[0],
+								turnRef,
+								note: tu.input.note,
+							});
+							await call.save();
+							result = { ok: true };
+						}
 					} else if (tu.name === "log_outcome") {
 						call.outcome = { type: tu.input.type, note: tu.input.note, turnRef };
 						await call.save();
