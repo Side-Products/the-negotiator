@@ -8,7 +8,7 @@ Built for the Hack-Nation 6th Global AI Hackathon, ElevenLabs Challenge 01. The 
 
 ## GAEB construction handoff
 
-- [Architecture brief — Claus](GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md): product boundary, data contracts, proof-carrying wedge, delivery phases, acceptance tests, and demo script.
+- [Architecture brief — Claus](docs/GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md): product boundary, data contracts, proof-carrying wedge, delivery phases, acceptance tests, and demo script.
 - [Construction negotiation skill](skills/negotiate-construction-bids/SKILL.md): live conversation and negotiation policy.
 - [Runtime policy](skills/negotiate-construction-bids/runtime.json): machine-readable gates, states, red flags, leverage, and report policy.
 - [Tischlerarbeiten profile](skills/negotiate-construction-bids/profiles/tischlerarbeiten.json): triggered reference-demo questions and mandatory escalations.

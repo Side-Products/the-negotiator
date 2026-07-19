@@ -2,7 +2,7 @@
 
 > Orientation doc for AI assistants and new contributors. Read this before touching code — it encodes the contracts and invariants the codebase depends on but cannot always express in code.
 
-> **Scope warning (2026-07-19):** this file describes the currently implemented moving/autobody engine. The proposed GAEB construction engine is intentionally not implemented yet. Before construction work, read [GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md](GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md) and the [construction skill](skills/negotiate-construction-bids/SKILL.md). In particular, the existing `committed: true`, frozen free-form spec, leverage query, US-dollar fee model, disclosure-only-when-asked prompt, and recording flow do not satisfy construction scope identity, evidence, authority, first-sentence AI disclosure, binding-intent, privacy, or supplier-confirmation requirements.
+> **Scope warning (2026-07-19):** this file describes the currently implemented moving/autobody engine. The proposed GAEB construction engine is intentionally not implemented yet. Before construction work, read [GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md](docs/GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md) and the [construction skill](skills/negotiate-construction-bids/SKILL.md). In particular, the existing `committed: true`, frozen free-form spec, leverage query, US-dollar fee model, disclosure-only-when-asked prompt, and recording flow do not satisfy construction scope identity, evidence, authority, first-sentence AI disclosure, binding-intent, privacy, or supplier-confirmation requirements.
 
 ## What this is
 

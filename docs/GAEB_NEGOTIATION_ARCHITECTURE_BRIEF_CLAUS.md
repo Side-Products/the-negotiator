@@ -292,7 +292,7 @@ Compare net amounts first. Store the supplier's statement as `standard`, `revers
 
 ## 9. Trade profiles and safe generic mode
 
-Load one base skill from [`skills/negotiate-construction-bids/SKILL.md`](skills/negotiate-construction-bids/SKILL.md). A profile may add questions and escalation triggers; it may not change the X83, assert technical equivalence, or create standards absent from the LV.
+Load one base skill from [`skills/negotiate-construction-bids/SKILL.md`](../skills/negotiate-construction-bids/SKILL.md). A profile may add questions and escalation triggers; it may not change the X83, assert technical equivalence, or create standards absent from the LV.
 
 When a validated profile is unavailable:
 
@@ -302,7 +302,7 @@ When a validated profile is unavailable:
 - route technical ambiguity to a qualified human;
 - avoid trade-specific benchmarks and expertise claims.
 
-For Tischlerarbeiten, load [`profiles/tischlerarbeiten.json`](skills/negotiate-construction-bids/profiles/tischlerarbeiten.json) only after human trade confirmation. Its additional topics include Aufmaß, Werk-/Montageplanung, specified materials/surfaces, fittings/locks, classifications, samples/approvals, logistics, installation, lead times, sequence, documentation, and acceptance. Ask a topic only when the LV or a detected deviation makes it relevant.
+For Tischlerarbeiten, load [`profiles/tischlerarbeiten.json`](../skills/negotiate-construction-bids/profiles/tischlerarbeiten.json) only after human trade confirmation. Its additional topics include Aufmaß, Werk-/Montageplanung, specified materials/surfaces, fittings/locks, classifications, samples/approvals, logistics, installation, lead times, sequence, documentation, and acceptance. Ask a topic only when the LV or a detected deviation makes it relevant.
 
 ## 10. Conversation and negotiation orchestrator
 
@@ -585,7 +585,7 @@ These are conservative product controls, not legal advice:
 - do not infer supplier authority from a phone answer; record role and request durable confirmation;
 - exact competitor identity and line-item prices remain confidential by default; obtain legal review for production disclosure policy.
 
-See [`EVIDENCE.md`](skills/negotiate-construction-bids/EVIDENCE.md) for sources, limitations, and operational implications.
+See [`EVIDENCE.md`](../skills/negotiate-construction-bids/EVIDENCE.md) for sources, limitations, and operational implications.
 
 ## 19. Submission artifacts
 
