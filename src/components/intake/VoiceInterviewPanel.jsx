@@ -70,7 +70,9 @@ function Panel({ jobId, vertical, onSpecUpdate }) {
           confirm_spec: async () => {
             const r = await fetch(`/api/jobs/${jobId}/confirm`, { method: "POST" });
             onSpecUpdate();
-            return r.ok ? "confirmed" : "error: could not confirm";
+            if (r.ok) return "confirmed";
+            const data = await r.json().catch(() => ({}));
+            return `error: ${data.error || "could not confirm"}`;
           },
         },
       });
