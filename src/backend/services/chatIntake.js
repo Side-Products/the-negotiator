@@ -141,6 +141,9 @@ const confirmationQuestion = (confirmations) => {
 		if (!item.alternatives?.length) {
 			return `I couldn't find "${item.original}" on the map for the ${item.label.toLowerCase()}.`;
 		}
+		if (item.kind === "area") {
+			return `For the ${item.label.toLowerCase()} I'll keep "${item.original}" as the area. If you have a street or landmark, send it and I'll use that instead.`;
+		}
 		return `Quick check on the ${item.label.toLowerCase()}: I found "${item.suggestion}". That the one?`;
 	});
 	const hasUnresolved = confirmations.some((item) => !item.alternatives?.length);

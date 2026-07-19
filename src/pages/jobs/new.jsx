@@ -75,7 +75,12 @@ export default function NewJob() {
       }
       if (data.locationConfirmations?.length) {
         for (const c of data.locationConfirmations) {
-          if (c.suggestion && c.suggestion !== c.original) {
+          if (c.kind === "area") {
+            const keepArea = window.confirm(
+              `${c.label}: "${c.original}" is an area, not an exact address.\n\nOK = keep it as the area, Cancel = go back and add a street or landmark.`,
+            );
+            if (!keepArea) return;
+          } else if (c.suggestion && c.suggestion !== c.original) {
             const useSuggestion = window.confirm(
               `${c.label}: did you mean "${c.suggestion}"?\n\nOK = use the suggestion, Cancel = keep "${c.original}".`,
             );

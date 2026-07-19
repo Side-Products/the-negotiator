@@ -13,6 +13,9 @@ function Panel({ jobId, vertical, onSpecUpdate }) {
   const [starting, setStarting] = useState(false);
   const [transcript, setTranscript] = useState([]);
   const scrollRef = useRef(null);
+  // Set after the first confirm attempt surfaces location checks, so the
+  // agent's follow-up confirm (after talking them through) isn't bounced again.
+  const locationsReviewedRef = useRef(false);
 
   const conversation = useConversation({
     micMuted,
@@ -45,6 +48,7 @@ function Panel({ jobId, vertical, onSpecUpdate }) {
       if (!res.ok) throw new Error(data.error || "Could not start the interview");
 
       setTranscript([]);
+      locationsReviewedRef.current = false;
       conversation.startSession({
         signedUrl: data.signedUrl,
         connectionType: "websocket",
@@ -68,10 +72,17 @@ function Panel({ jobId, vertical, onSpecUpdate }) {
             return r.ok ? "ok" : "error: spec is confirmed and frozen";
           },
           confirm_spec: async () => {
-            const r = await fetch(`/api/jobs/${jobId}/confirm`, { method: "POST" });
+            const r = await fetch(`/api/jobs/${jobId}/confirm`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              // First attempt surfaces location checks to the agent; once the
+              // agent has talked them through with the user, the retry passes.
+              body: JSON.stringify({ locationsReviewed: locationsReviewedRef.current }),
+            });
             onSpecUpdate();
             if (r.ok) return "confirmed";
             const data = await r.json().catch(() => ({}));
+            if (data.locationConfirmations?.length) locationsReviewedRef.current = true;
             return `error: ${data.error || "could not confirm"}`;
           },
         },
