@@ -37,11 +37,13 @@ export default async function handler(req, res) {
 			if (confirmations.length && !locationsReviewed) {
 				return res.status(422).json({
 					error: confirmations
-						.map((c) =>
-							c.suggestion && c.suggestion !== c.original
+						.map((c) => {
+							if (c.kind === "area")
+								return `${c.label}: "${c.original}" is an area, keeping it as is unless a street or landmark is added`;
+							return c.suggestion && c.suggestion !== c.original
 								? `${c.label}: did you mean "${c.suggestion}"?`
-								: `${c.label}: could not verify "${c.original}"`,
-						)
+								: `${c.label}: could not verify "${c.original}"`;
+						})
 						.join(" "),
 					locationConfirmations: confirmations,
 					job,

@@ -18,7 +18,7 @@ export const suggestLocation = async (input) => {
 				"Content-Type": "application/json",
 				"X-Goog-Api-Key": key,
 				"X-Goog-FieldMask":
-					"suggestions.placePrediction.placeId,suggestions.placePrediction.text",
+					"suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.types,suggestions.placePrediction.structuredFormat.mainText.text",
 			},
 			body: JSON.stringify({ input: value }),
 		});
@@ -31,6 +31,8 @@ export const suggestLocation = async (input) => {
 			.map((prediction) => ({
 				value: prediction.text?.text || "",
 				placeId: prediction.placeId || "",
+				types: prediction.types || [],
+				mainText: prediction.structuredFormat?.mainText?.text || "",
 			}))
 			.filter((prediction) => prediction.value);
 		if (!predictions.length) {
@@ -44,6 +46,22 @@ export const suggestLocation = async (input) => {
 		const best = predictions[0];
 		const original = comparable(value);
 		const candidate = comparable(best.value);
+		// A specific place (society, shop, building) must never silently replace
+		// area-level input like "Surat West": keep the user's area and let the
+		// conversation offer precision instead.
+		const SPECIFIC_TYPES = ["establishment", "point_of_interest", "premise", "subpremise"];
+		const bestIsSpecificPlace = (best.types || []).some((t) => SPECIFIC_TYPES.includes(t));
+		const userNamedThePlace =
+			best.mainText && comparable(best.mainText) === original;
+		if (bestIsSpecificPlace && candidate !== original && !userNamedThePlace) {
+			return {
+				value,
+				verified: false,
+				needsConfirmation: true,
+				kind: "area",
+				suggestions: predictions,
+			};
+		}
 		const obviousExtension =
 			candidate === original ||
 			candidate.startsWith(`${original} `) ||
@@ -74,6 +92,7 @@ export const normalizeLocationPatch = async (vertical, patch) => {
 				label: field.label,
 				original: patch[field.key],
 				suggestion: result.value,
+				kind: result.kind,
 				alternatives: result.suggestions || [],
 			});
 		}
