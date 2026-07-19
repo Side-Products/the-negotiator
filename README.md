@@ -1,4 +1,4 @@
-# The Negotiator
+# Haggle
 
 Voice agents that call, compare, and haggle — pick your market, never overpay again.
 

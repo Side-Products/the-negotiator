@@ -14,7 +14,7 @@ const twiml = (text) =>
 		.replace(/>/g, "&gt;")}</Message></Response>`;
 
 const verticalMenu = () =>
-	`👋 Welcome to *The Negotiator* — I get vendors to compete for your job.\n\nWhat do you need quotes for?\n${VERTICALS.map(
+	`👋 Welcome to *Haggle* — I get vendors to compete for your job.\n\nWhat do you need quotes for?\n${VERTICALS.map(
 		(v, i) => `${i + 1}. ${v.label}`,
 	).join("\n")}\n\nReply with a number. (Send "restart" anytime to start over.)`;
 
@@ -36,7 +36,7 @@ const intakeSystemPrompt = (vertical) => {
 				}): ${f.ask}`,
 		)
 		.join("\n");
-	return `You are the WhatsApp intake assistant for The Negotiator, collecting a "${vertical.label}" job spec so AI voice agents can call vendors and get competing quotes.
+	return `You are the WhatsApp intake assistant for Haggle, collecting a "${vertical.label}" job spec so AI voice agents can call vendors and get competing quotes.
 Today's date is ${new Date().toISOString().slice(0, 10)} — resolve relative dates ("Saturday", "August 15") to the nearest FUTURE date.
 
 ${vertical.interview?.style || "Be warm and concise. Ask exactly one question at a time."}

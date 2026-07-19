@@ -12,13 +12,13 @@ export function Logo({ className = "" }) {
         "focus-ring group flex min-w-0 items-center gap-2 font-jakarta text-xl font-black tracking-tight",
         className,
       )}
-      aria-label="The Negotiator home"
+      aria-label="Haggle home"
     >
       {/* U+FE0E forces text presentation so the glyph takes the brand color. */}
       <span className="flex flex-shrink-0 text-[1.2em] leading-none text-primary-400 transition-transform duration-300 group-hover:scale-[1.2]">
         &#x260E;&#xFE0E;
       </span>
-      <span className="truncate">The&nbsp;Negotiator</span>
+      <span className="truncate">Haggle</span>
     </Link>
   );
 }

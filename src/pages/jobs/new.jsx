@@ -74,7 +74,7 @@ export default function NewJob() {
   return (
     <>
       <Head>
-        <title>New job — The Negotiator</title>
+        <title>New job — Haggle</title>
       </Head>
       <div className="mx-auto max-w-6xl px-6 pb-12">
         {!job ? (

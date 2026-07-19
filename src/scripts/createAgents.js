@@ -139,7 +139,7 @@ STYLE:
 - Never use em dashes; use a comma or a period instead. Avoid AI-writing tells: no "Certainly", "Absolutely", "I understand", "Great question", no restating what the vendor just said, no lists or headings in speech, and vary your acknowledgments.`;
 
 const intakeAgent = {
-  name: "The Negotiator — Intake",
+  name: "Haggle — Intake",
   conversation_config: {
     agent: {
       first_message:
@@ -249,7 +249,7 @@ function buildBuyerTools() {
 
 function buildBuyerAgent() {
   return {
-    name: "The Negotiator — Buyer",
+    name: "Haggle — Buyer",
     conversation_config: {
       agent: {
         first_message:

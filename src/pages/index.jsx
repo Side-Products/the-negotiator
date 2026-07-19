@@ -238,7 +238,7 @@ export default function Home() {
             <SectionHeading
               kicker="Why it wins"
               title="Negotiation you can audit"
-              sub="Cheap talk is easy for an AI. The Negotiator is built so every number it uses on a call traces back to evidence."
+              sub="Cheap talk is easy for an AI. Haggle is built so every number it uses on a call traces back to evidence."
             />
 
             <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
@@ -316,7 +316,7 @@ export default function Home() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-3 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:px-8 lg:px-10">
-          <span>ElevenLabs &times; Hack-Nation: The Negotiator</span>
+          <span>ElevenLabs &times; Hack-Nation: Haggle</span>
           <span>Built in 24 hours. Negotiates in minutes.</span>
         </div>
       </footer>
