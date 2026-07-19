@@ -95,7 +95,16 @@ try {
     assertStatus(updated.response.status, 200, `save ${field}`);
   }
 
-  const confirmed = await request(`/api/jobs/${jobId}/confirm`, { method: "POST" });
+  // The confirm route may return 422 with locationConfirmations when Places
+  // verification suggests corrections; the contract is to re-confirm with
+  // locationsReviewed: true (same flow as the UI).
+  let confirmed = await request(`/api/jobs/${jobId}/confirm`, { method: "POST" });
+  if (confirmed.response.status === 422 && confirmed.data.locationConfirmations?.length) {
+    confirmed = await request(`/api/jobs/${jobId}/confirm`, {
+      method: "POST",
+      body: { locationsReviewed: true },
+    });
+  }
   assertStatus(confirmed.response.status, 200, "confirm valid spec");
   if (!confirmed.data.job?.confirmed || confirmed.data.job?.status !== "confirmed") {
     throw new Error("confirm valid spec: job was not frozen");

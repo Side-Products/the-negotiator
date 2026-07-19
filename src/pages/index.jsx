@@ -10,10 +10,12 @@ import { CutButton } from "@/components/ui/CutButton";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import {
   ArrowRight,
+  Bug,
   Car,
   Check,
   Clock,
   FileCheck,
+  KeyRound,
   ListChecks,
   Mic,
   Phone,
@@ -29,6 +31,29 @@ import {
 } from "lucide-react";
 
 /* ---------- shared bits ---------- */
+
+// Hand-drawn padlock. `open` animates the shackle springing open (CSS
+// keyframe, reduced-motion aware); without it the lock sits closed, for the
+// faint floating background figures.
+function LockFigure({ className = "", open = false, style, strokeWidth = 1.8 }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 26"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      className={className}
+      style={style}
+    >
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" className={open ? "anim-shackle" : undefined} />
+      <rect x="5" y="10" width="14" height="11" rx="2" fill="currentColor" fillOpacity="0.08" />
+      <circle cx="12" cy="14.6" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M12 16v2.4" />
+    </svg>
+  );
+}
 
 function CornerPlus({ className }) {
   return (
@@ -97,36 +122,36 @@ function SectionHeading({ kicker, title, sub, align = "center" }) {
 const STEPS = [
   {
     icon: Mic,
-    title: "Brief the intake agent",
-    copy: "Talk through your job, or upload the paperwork. The agent turns it into an itemised spec every vendor quotes against.",
+    title: "Say what happened",
+    copy: "Locked out, broken key, rekeying after a breakup. A one-minute interview captures the door, the urgency, and the hours, once.",
   },
   {
     icon: PhoneCall,
-    title: "Calls go out in parallel",
-    copy: "A buyer agent rings each vendor, works through the same spec, and gathers line-item quotes, recorded end to end.",
+    title: "Every locksmith nearby gets a call",
+    copy: "The agent rings them in parallel and demands all-in numbers: call-out, labor, travel, after-hours. No 'the tech will price it on site'.",
   },
   {
     icon: Scale,
     title: "The leverage round",
-    copy: "Armed with committed bids, the agent calls back and haggles, quoting real competitor numbers and never invented ones.",
+    copy: "Armed with real committed bids, it presses each shop to beat the best one, and asks where the tech actually dispatches from.",
   },
   {
     icon: FileCheck,
-    title: "Evidence-backed report",
-    copy: "Ranked quotes, red flags, and a recording behind every claim land in one report you can act on.",
+    title: "Pick with proof",
+    copy: "A ranked comparison with red flags, transcripts, and a recording behind every number. You choose, they drive over.",
   },
 ];
 
 const FEATURES = [
   {
     icon: ListChecks,
-    title: "Itemised, comparable quotes",
-    copy: "Every vendor prices the same spec, so line items line up and hidden extras stand out immediately.",
+    title: "The price locks before the van moves",
+    copy: "Every shop commits an all-in itemised number on the phone. If the tech quotes more on your doorstep, you have the recording.",
   },
   {
     icon: TriangleAlert,
-    title: "Red flags surfaced",
-    copy: "Vague pricing, pressure tactics, and dodged questions get flagged, with the transcript to prove it.",
+    title: "Scam patterns flagged",
+    copy: "The $35 teaser call-out, padded travel from a distant dispatch, the fake-local call center. Each one is a rule that fires with the transcript to prove it.",
   },
   {
     icon: ShieldCheck,
@@ -137,31 +162,43 @@ const FEATURES = [
 
 const VERTICALS = [
   {
+    icon: KeyRound,
+    name: "Locksmith",
+    tag: "Flagship",
+    copy: "Lockouts, rekeys, broken keys. The panic purchase where overpaying is the business model, fixed by calling everyone at once.",
+  },
+  {
     icon: Truck,
     name: "Moving",
-    tag: "Live demo",
-    copy: "Apartment and house moves: crew size, truck, packing, stairs, insurance, all quoted line by line.",
+    tag: "Live",
+    copy: "Apartment and house moves: crew, truck, packing, stairs, insurance, all quoted line by line.",
   },
   {
     icon: Car,
     name: "Auto body",
-    tag: "Config swap",
+    tag: "Live",
     copy: "Collision repair estimates: parts, labour, paint, OEM vs aftermarket. Same engine, new market.",
+  },
+  {
+    icon: Bug,
+    name: "Pest control",
+    tag: "Live",
+    copy: "Fixed treatment prices before anyone rings your bell, instead of 'special fees' invented inside your home.",
   },
 ];
 
 const OLD_WAY = [
-  "Dial vendors one at a time, repeating your details on every call",
-  "Scribble quotes on a notepad you can't line up later",
-  'Take "trust me, that\'s a good price" at face value',
-  "No leverage, no second round, no proof of what was said",
+  'Google "locksmith near me" into a wall of ads and fake local numbers',
+  'Accept "$35 call-out, the tech prices the rest on site"',
+  "Wait outside while the meter quietly runs",
+  "Learn the real price on your doorstep, with no way back",
 ];
 
 const NEW_WAY = [
-  "One brief fans out to every vendor at once",
-  "Itemised quotes land in a ranked, comparable table",
-  "A second round haggles using real competing bids",
-  "Every number backed by a recording you can replay",
+  "One minute of questions fans out to every locksmith nearby",
+  "All-in itemised numbers, travel and call-out included",
+  "The agent asks where they actually dispatch from",
+  "A fixed, recorded price before anyone drives over",
 ];
 
 /* ---------- mock visuals (pure CSS/SVG, no images) ---------- */
@@ -169,9 +206,9 @@ const NEW_WAY = [
 // Hero product mock: a ranked-quotes dashboard mid-negotiation.
 function QuotesMock() {
   const rows = [
-    { name: "Blue Sky Movers", price: "$1,940", best: false, bar: 92 },
-    { name: "Summit Relocation", price: "$1,720", best: false, bar: 78 },
-    { name: "Anchor Moving Co.", price: "$1,520", best: true, bar: 60 },
+    { name: "SecureHome Master Locksmiths", price: "$320", best: false, bar: 95 },
+    { name: "Bolt & Barrel Security", price: "$180", best: false, bar: 62 },
+    { name: "Keystone Lock & Door", price: "$130", best: true, bar: 45 },
   ];
   return (
     <div className="cut-corners-lg bg-border p-px shadow-xl">
@@ -185,7 +222,7 @@ function QuotesMock() {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-400" />
             Round 2 · negotiating
           </span>
-          <span className="ml-auto font-mono text-xs text-muted-foreground">3 vendors</span>
+          <span className="ml-auto font-mono text-xs text-muted-foreground">3 locksmiths</span>
         </div>
 
         {/* rows */}
@@ -229,9 +266,9 @@ function QuotesMock() {
         <div className="flex items-center justify-between border-t border-border px-4 py-3">
           <span className="flex items-center gap-2 text-sm text-muted-foreground">
             <TrendingDown className="h-4 w-4 text-primary-400" />
-            Best clean bid vs first round
+            Best all-in price vs first quote found
           </span>
-          <span className="font-jakarta text-sm font-bold text-primary-500">−$420 (18%)</span>
+          <span className="font-jakarta text-sm font-bold text-primary-500">−$190 (59%)</span>
         </div>
       </div>
     </div>
@@ -241,16 +278,16 @@ function QuotesMock() {
 // "Old way" mock: a scattered, muted notepad of half-finished calls.
 function NotepadMock() {
   const scraps = [
-    { text: "Blue Sky: $2,100? on hold 12 min", strike: false },
-    { text: "Summit: left voicemail", strike: true },
-    { text: "Anchor: “best I can do, trust me”", strike: false },
-    { text: "call back after 5pm??", strike: false },
+    { text: "24/7 Locks: $35... 'tech prices on site'??", strike: false },
+    { text: "2nd one: no price over the phone", strike: true },
+    { text: "SecureHome: $320, 'certified'", strike: false },
+    { text: "how far away IS this guy", strike: false },
   ];
   return (
     <div className="relative h-full w-full overflow-hidden p-6">
       <div className="mx-auto max-w-xs -rotate-1 rounded-lg border border-border bg-background p-5 shadow-sm">
         <p className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground/70">
-          movers · todo
+          locksmiths · locked out
         </p>
         <ul className="space-y-2.5">
           {scraps.map((s) => (
@@ -268,7 +305,7 @@ function NotepadMock() {
         </ul>
       </div>
       <span className="absolute right-5 top-5 flex items-center gap-1 rounded-full bg-foreground/85 px-2.5 py-1 text-[11px] font-medium text-background shadow-md">
-        <Clock className="h-3 w-3" /> 2 hours in
+        <Clock className="h-3 w-3" /> 40 min outside
       </span>
     </div>
   );
@@ -330,6 +367,21 @@ export default function Home() {
             }}
           />
 
+          {/* Giant background lock: sits behind the hero copy, shackle opening
+              once on load. Faint enough to read as texture, not content. */}
+          <LockFigure
+            open
+            strokeWidth={1}
+            className="pointer-events-none absolute left-1/2 top-14 -z-10 hidden h-[34rem] w-[34rem] -translate-x-1/2 text-primary-400/[0.08] sm:block dark:text-primary-400/[0.06]"
+          />
+
+          {/* Floating background locks (decorative, desktop only) */}
+          <LockFigure className="float-y pointer-events-none absolute left-[8%] top-40 -z-10 hidden h-14 w-14 text-primary-400/25 lg:block" />
+          <LockFigure
+            className="float-y pointer-events-none absolute right-[10%] top-64 -z-10 hidden h-10 w-10 text-foreground/15 lg:block"
+            style={{ "--float-rot": "12deg", "--float-dur": "9s" }}
+          />
+
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
             <div className="mx-auto flex max-w-4xl flex-col items-center pb-14 pt-32 text-center sm:pt-40">
               <span
@@ -344,17 +396,17 @@ export default function Home() {
                 className="enter mt-7 text-balance font-jakarta text-5xl font-black leading-[1.04] tracking-[-0.02em] sm:text-6xl lg:text-7xl"
                 style={{ "--enter-delay": "80ms" }}
               >
-                Voice agents that call, compare, and{" "}
-                <span className="text-primary-400">haggle</span>.
+                Locked out? Don't panic.{" "}
+                <span className="text-primary-400">Haggle</span>.
               </h1>
 
               <p
                 className="enter mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg"
                 style={{ "--enter-delay": "160ms" }}
               >
-                Brief an AI buyer once. It phones every vendor in parallel, collects itemised
-                quotes, then calls back and negotiates with competing bids as leverage, every
-                claim backed by a recording.
+                Locksmiths price your desperation. Haggle's AI agent phones every locksmith
+                nearby at once, stays calm, demands all-in numbers, and makes them beat each
+                other, so a fair, recorded price is waiting before anyone drives over.
               </p>
 
               <div
@@ -362,7 +414,7 @@ export default function Home() {
                 style={{ "--enter-delay": "240ms" }}
               >
                 <CutButton size="lg" href="/jobs/new">
-                  Start a job <ArrowRight className="h-4 w-4" />
+                  Get locksmith quotes <ArrowRight className="h-4 w-4" />
                 </CutButton>
                 <CutButton size="lg" variant="outline" href="#how">
                   See how it works
@@ -380,9 +432,9 @@ export default function Home() {
           <div className="border-y border-border">
             <div className="mx-auto grid max-w-[1440px] grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {[
-                ["Parallel calls", "Every vendor rung at once, not one by one"],
-                ["Two rounds", "Quote first, then negotiate with leverage"],
-                ["Zero bluffing", "Leverage only from quotes vendors committed"],
+                ["4 to 10x", "Price inflation in fake-locksmith networks sued by the FTC in 30+ states"],
+                ["1 in 2", "Locksmiths charged above fair price in a study of 4,224 shops"],
+                ["Zero bluffing", "The agent's leverage comes only from quotes shops committed"],
               ].map(([stat, copy]) => (
                 <div key={stat} className="px-6 py-5 text-center">
                   <p className="font-jakarta text-lg font-bold">{stat}</p>
@@ -399,8 +451,8 @@ export default function Home() {
             <Reveal>
               <SectionHeading
                 kicker="How it works"
-                title="From brief to best price in four steps"
-                sub="Two generic voice agents, an intake interviewer and a buyer, do the calling so you never have to."
+                title="From locked out to a fair price in four steps"
+                sub="Two voice agents, an interviewer and a buyer, make the calls you can't make while standing outside your own door."
               />
             </Reveal>
 
@@ -436,7 +488,7 @@ export default function Home() {
             <Reveal>
               <SectionHeading
                 kicker="Before & after"
-                title="The negotiation, without the afternoon on the phone"
+                title="The lockout, with and without an agent on your side"
               />
             </Reveal>
 
@@ -561,13 +613,13 @@ export default function Home() {
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
             <Reveal>
               <SectionHeading
-                kicker="Pick your market"
-                title="One engine, any vertical"
-                sub="Verticals are config files, not code. The same two agents negotiate a house move or a fender bender."
+                kicker="Beyond lockouts"
+                title="Locksmiths first. Any phone-priced market next."
+                sub="Verticals are config files, not code. The same two agents that beat lockout scams already run three more markets."
               />
             </Reveal>
 
-            <div className="mx-auto mt-12 grid max-w-4xl gap-5 sm:grid-cols-2">
+            <div className="mx-auto mt-12 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {VERTICALS.map(({ icon: Icon, name, tag, copy }, i) => (
                 <Reveal key={name} delay={i * 100}>
                   <div className="cut-corners card group relative h-full p-6 transition-colors hover:border-primary-400 sm:p-7">
@@ -603,17 +655,17 @@ export default function Home() {
               <div className="cut-corners-lg mx-auto max-w-4xl bg-border p-px">
                 <div className="cut-corners-lg flex flex-col items-center bg-card px-6 py-16 text-center sm:px-10 sm:py-20">
                   <h2 className="text-balance font-jakarta text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl">
-                    Stop overpaying.
+                    The lock isn't the problem.
                     <br />
-                    Put an agent on the phone.
+                    The price is.
                   </h2>
                   <p className="mt-5 max-w-xl text-balance text-muted-foreground">
-                    Describe the job once. The agents handle the calls, the haggling, and the
-                    receipts.
+                    Say what happened once. Haggle rings every locksmith nearby, locks a fair
+                    all-in price, and brings the receipts.
                   </p>
                   <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                     <CutButton size="lg" href="/jobs/new">
-                      Start a job <ArrowRight className="h-4 w-4" />
+                      Get locksmith quotes <ArrowRight className="h-4 w-4" />
                     </CutButton>
                     <CutButton size="lg" variant="outline" href="/jobs">
                       Browse jobs
@@ -633,8 +685,8 @@ export default function Home() {
             <div>
               <Logo />
               <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                Voice agents that call vendors, gather itemised quotes, and negotiate with
-                evidence-backed leverage.
+                Voice agents that call every locksmith nearby, lock all-in prices, and negotiate
+                with evidence-backed leverage. More markets, same engine.
               </p>
             </div>
 
@@ -651,8 +703,10 @@ export default function Home() {
               {
                 title: "Markets",
                 links: [
+                  ["Locksmith", "/jobs/new"],
                   ["Moving", "/jobs/new"],
                   ["Auto body", "/jobs/new"],
+                  ["Pest control", "/jobs/new"],
                 ],
               },
               {

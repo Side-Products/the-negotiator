@@ -3,7 +3,8 @@ import autobody from "@/config/verticals/autobody";
 import locksmith from "@/config/verticals/locksmith";
 import pestcontrol from "@/config/verticals/pestcontrol";
 
-export const VERTICALS = [moving, autobody, locksmith, pestcontrol];
+// Locksmith first: the flagship vertical leads everywhere verticals are listed.
+export const VERTICALS = [locksmith, moving, autobody, pestcontrol];
 
 export const getVertical = (id) => VERTICALS.find((v) => v.id === id);
 

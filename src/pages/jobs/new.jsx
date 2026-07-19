@@ -1,4 +1,4 @@
-// New job — pick a vertical (the config-swap moment), then build one spec
+// New job: pick a vertical (the config-swap moment), then build one spec
 // from voice + documents and freeze it.
 
 import { useCallback, useState } from "react";
@@ -8,10 +8,15 @@ import { ArrowRight, Briefcase, Bug, Car, KeyRound, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { VERTICALS, getVertical } from "@/config/verticals";
 
-const VERTICAL_ICONS = { moving: Truck, autobody: Car, locksmith: KeyRound, pestcontrol: Bug };
 import VoiceInterviewPanel from "@/components/intake/VoiceInterviewPanel";
 import DocUpload from "@/components/intake/DocUpload";
 import SpecPreview from "@/components/intake/SpecPreview";
+
+const VERTICAL_ICONS = { moving: Truck, autobody: Car, locksmith: KeyRound, pestcontrol: Bug };
+
+// Locksmith is the flagship market; the rest are shown small and de-emphasized.
+const FEATURED = VERTICALS.find((v) => v.id === "locksmith") || VERTICALS[0];
+const OTHER_VERTICALS = VERTICALS.filter((v) => v.id !== FEATURED.id);
 
 export default function NewJob() {
   const router = useRouter();
@@ -106,18 +111,89 @@ export default function NewJob() {
   return (
     <>
       <Head>
-        <title>New job — Haggle</title>
+        <title>New job · Haggle</title>
       </Head>
       <div className="mx-auto max-w-6xl px-6 pb-12">
         {!job ? (
           <div className="mx-auto max-w-3xl pt-6">
             <h1 className="text-2xl font-semibold">What are we negotiating?</h1>
             <p className="mt-1 text-muted-foreground">
-              Pick a vertical. Everything downstream — the interview, the calls, the red flags —
-              comes from its config file.
+              Pick a market. Everything downstream comes from its config file: the interview, the
+              calls, the red flags.
             </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              {VERTICALS.map((v) => {
+
+            {/* Featured: Locksmith */}
+            <button
+              type="button"
+              onClick={() => pickVertical(FEATURED.id)}
+              disabled={!!creating}
+              className="group cut-corners-lg relative mt-8 block w-full bg-primary-400 p-px text-left transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              <div className="cut-corners-lg relative overflow-hidden bg-card p-7 sm:p-8">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, #08A0E9 13%, transparent), transparent 70%)",
+                  }}
+                />
+                <div className="relative flex items-start gap-5">
+                  <span className="cut-corners inline-flex h-14 w-14 shrink-0 items-center justify-center bg-primary-400 text-white">
+                    {(() => {
+                      const Icon = VERTICAL_ICONS[FEATURED.id] || Briefcase;
+                      return <Icon className="h-7 w-7" aria-hidden="true" />;
+                    })()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="badge badge-info">Flagship</span>
+                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                        most popular
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 font-jakarta text-2xl font-bold">
+                      {FEATURED.label}
+                      <ArrowRight
+                        className="h-5 w-5 text-primary-500 transition-transform group-hover:translate-x-1"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                      {FEATURED.tagline}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                      <span>
+                        market ~
+                        <span className="font-medium text-foreground">
+                          ${FEATURED.benchmarks.marketMid.toLocaleString()}
+                        </span>
+                      </span>
+                      <span>
+                        <span className="font-medium text-foreground">
+                          {FEATURED.vendorPolicyCards.length}
+                        </span>{" "}
+                        negotiation styles
+                      </span>
+                      <span>
+                        <span className="font-medium text-foreground">
+                          {FEATURED.redFlags.length}
+                        </span>{" "}
+                        red-flag rules
+                      </span>
+                    </div>
+                    {creating === FEATURED.id && <div className="spinner mt-4" />}
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {/* De-emphasized: other markets */}
+            <p className="mt-8 text-xs font-medium uppercase tracking-widest text-muted-foreground/70">
+              Other markets
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {OTHER_VERTICALS.map((v) => {
                 const Icon = VERTICAL_ICONS[v.id] || Briefcase;
                 return (
                   <button
@@ -125,35 +201,18 @@ export default function NewJob() {
                     type="button"
                     onClick={() => pickVertical(v.id)}
                     disabled={!!creating}
-                    className="group cut-corners relative bg-border p-px text-left transition-all hover:-translate-y-0.5 hover:bg-primary-400 disabled:opacity-50"
+                    className="group cut-corners flex items-center gap-3 border border-border bg-card/50 p-3.5 text-left opacity-80 transition-all hover:-translate-y-0.5 hover:border-primary-400 hover:opacity-100 disabled:opacity-50"
                   >
-                    <div className="cut-corners flex h-full flex-col bg-card p-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="cut-corners inline-flex h-11 w-11 items-center justify-center bg-primary-500/10 text-primary-500 transition-colors group-hover:bg-primary-500 group-hover:text-white">
-                        <Icon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <ArrowRight
-                        className="h-4 w-4 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary-500"
-                        aria-hidden="true"
-                      />
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:text-primary-500">
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{v.label}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        market ~${v.benchmarks.marketMid.toLocaleString()}
+                      </div>
                     </div>
-                    <div className="mt-4 text-lg font-semibold">{v.label}</div>
-                    <p className="mt-1 flex-1 text-sm leading-relaxed text-muted-foreground">
-                      {v.tagline}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
-                      <span>
-                        market ~<span className="font-medium text-foreground">${v.benchmarks.marketMid.toLocaleString()}</span>
-                      </span>
-                      <span>
-                        <span className="font-medium text-foreground">{v.vendorPolicyCards.length}</span> negotiation styles
-                      </span>
-                      <span>
-                        <span className="font-medium text-foreground">{v.redFlags.length}</span> red-flag rules
-                      </span>
-                    </div>
-                    {creating === v.id && <div className="spinner mt-3" />}
-                    </div>
+                    {creating === v.id && <div className="spinner ml-auto h-4 w-4" />}
                   </button>
                 );
               })}
@@ -163,7 +222,7 @@ export default function NewJob() {
           <div className="pt-6">
             <h1 className="text-2xl font-semibold">New {vertical.label.toLowerCase()} job</h1>
             <p className="mt-1 text-muted-foreground">
-              Build the spec by voice, by document, or both — then confirm to freeze it for every call.
+              Build the spec by voice, by document, or both, then confirm to freeze it for every call.
             </p>
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
               <div className="min-w-0 space-y-6">
