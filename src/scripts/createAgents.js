@@ -32,9 +32,12 @@ function clientTool(name, description, properties, required) {
 }
 
 // Webhook variant for real phone calls: no browser on the line, so the tool
-// executes from ElevenLabs' side against our public API. {{call_id}} in the
-// URL is resolved from the conversation's dynamic variables (set server-side),
-// so the LLM cannot route a tool call to a different call's records.
+// executes from ElevenLabs' side against our public API. The {call_id} path
+// param is bound to the conversation's call_id dynamic variable (set
+// server-side), so the LLM cannot route a tool call to another call's records.
+const publicUrl = () =>
+  (process.env.PUBLIC_URL || process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+
 function webhookTool(name, description, { method = "POST", path, properties, required }) {
   const tool = {
     type: "webhook",
@@ -42,8 +45,11 @@ function webhookTool(name, description, { method = "POST", path, properties, req
     description,
     response_timeout_secs: 20,
     api_schema: {
-      url: `${(process.env.PUBLIC_URL || "").replace(/\/$/, "")}${path}`,
+      url: `${publicUrl()}${path}`,
       method,
+      path_params_schema: {
+        call_id: { type: "string", dynamic_variable: "call_id" },
+      },
     },
   };
   if (properties) {
@@ -66,6 +72,7 @@ HOW YOU TALK (this is a phone conversation, not a script):
 - No salesy filler — never say things like "That's a great question!" or "Let's get you moving fast!". Avoid exclamation marks.
 - When the user asks you something, answer it directly FIRST, then return to the interview. If you genuinely don't know (vendor availability, market prices), say so plainly in one sentence — never spin a non-answer into a pitch.
 - No pressure tactics. You collect details; you don't sell.
+- Never use em dashes; use a comma or a period instead. Avoid AI-writing tells: no "Certainly", "Absolutely", "I understand", "Great question", no restating what the user just said, no lists or headings, and vary your acknowledgments instead of repeating "Got it".
 
 FIELD TAXONOMY (the fields you must fill, with types and suggested phrasings):
 {{taxonomy_json}}
@@ -126,11 +133,20 @@ FRICTION HANDLING:
 - If interrupted, stay polite, let them finish, and return to your question.
 - If answers are vague or rambling, restate what you need in one concise sentence.
 - If they deflect with "call us back", try once more for a number, then accept and call log_outcome with type "callback".
-- Keep your turns short and natural — this is a phone call, not an essay.`;
+- If they refuse to give prices over the phone, ask once for a typical range for this scope. If they still refuse, accept it politely and call log_outcome with type "callback" (estimator visit or callback offered) or "declined", with a note saying they do not quote by phone.
+- If they offer a better price for describing the job as smaller or different than it is, refuse plainly: the job is exactly as specified. Log nothing based on the misstated version.
+- If they push add-ons the job does not need, decline them and ask for the total without the extras. Never let unrequested services into the committed quote.
+- If they accuse you of bluffing about a competing bid, do not escalate: offer the competing quote's amount and line items (never the company name). If you have no leverage, say plainly that you have no other bid yet.
+- Keep your turns short and natural — this is a phone call, not an essay.
+
+STYLE:
+- Never use em dashes; use a comma or a period instead. Avoid AI-writing tells: no "Certainly", "Absolutely", "I understand", "Great question", no restating what the vendor just said, no lists or headings in speech, and vary your acknowledgments.`;
 
 const intakeAgent = {
-  name: "The Negotiator — Intake",
+  name: "Haggle — Intake",
   conversation_config: {
+    // Warm female voice for the interview (ElevenLabs premade "Sarah").
+    tts: { voice_id: "EXAVITQu4vr4xnSDxMaL" },
     agent: {
       first_message:
         "Hi! I'm your intake assistant — I'll gather the details of your job once so you never have to repeat yourself. Ready to start?",
@@ -169,7 +185,7 @@ function buildBuyerTools() {
       name: "log_quote_item",
       description:
         "Record one itemised fee line the vendor just stated. Call every time a price component is mentioned.",
-      path: "/api/calls/{{call_id}}/quote-items",
+      path: "/api/calls/{call_id}/quote-items",
       properties: {
         fee_key: str("The fee taxonomy key this line maps to (from the fee taxonomy list)."),
         label: str("Short human label for the line, e.g. 'Truck & travel'."),
@@ -182,7 +198,7 @@ function buildBuyerTools() {
       name: "commit_quote",
       description:
         "Commit the vendor's final quote. Returns the recomputed total and any red flags — react to them on the call before hanging up.",
-      path: "/api/calls/{{call_id}}/commit",
+      path: "/api/calls/{call_id}/commit",
       properties: {
         total: num("The all-in total the vendor stated."),
         guaranteed: bool("Whether the vendor will guarantee the total in writing (not-to-exceed)."),
@@ -194,7 +210,7 @@ function buildBuyerTools() {
       name: "record_negotiation_event",
       description:
         "Record a price movement caused by a negotiation lever. Call when the vendor changes their total in response to leverage.",
-      path: "/api/calls/{{call_id}}/negotiation-event",
+      path: "/api/calls/{call_id}/negotiation-event",
       properties: {
         lever_id: str("The id of the lever used (from the levers list)."),
         before_total: num("The vendor's total before the lever was applied."),
@@ -207,7 +223,7 @@ function buildBuyerTools() {
       name: "log_outcome",
       description:
         "Record how the call ended when there is no committed quote. Every call must end with commit_quote or this.",
-      path: "/api/calls/{{call_id}}/outcome",
+      path: "/api/calls/{call_id}/outcome",
       properties: {
         type: str("How the call ended.", { enum: ["callback", "declined"] }),
         note: str("Optional one-line context, e.g. 'asked to call back tomorrow morning'."),
@@ -218,12 +234,12 @@ function buildBuyerTools() {
       name: "get_leverage",
       description:
         "Fetch the competing bids you are allowed to reference. Returns an empty list if you have none — in that case you must not imply any competing bid exists.",
-      path: "/api/calls/{{call_id}}/leverage",
+      path: "/api/calls/{call_id}/leverage",
       method: "GET",
     },
   ];
 
-  const tools = process.env.PUBLIC_URL
+  const tools = publicUrl()
     ? defs.map((d) =>
         webhookTool(d.name, d.description, {
           method: d.method || "POST",
@@ -239,7 +255,7 @@ function buildBuyerTools() {
 
 function buildBuyerAgent() {
   return {
-    name: "The Negotiator — Buyer",
+    name: "Haggle — Buyer",
     conversation_config: {
       agent: {
         first_message:
@@ -271,15 +287,18 @@ async function createAgent(payload) {
 }
 
 // Update in place when the agent already exists — keeps the same agent id, so
-// .env.local and the running dev server stay untouched.
+// .env.local and the running dev server stay untouched. The display name is
+// NOT sent on update: the team renames agents in the dashboard (e.g. "Haggle")
+// and this script must not clobber that.
 async function updateAgent(agentId, payload) {
+  const { name, ...config } = payload;
   const res = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
     method: "PATCH",
     headers: {
       "xi-api-key": process.env.ELEVENLABS_API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(config),
   });
   if (!res.ok) {
     throw new Error(`Failed to update "${payload.name}": ${res.status} ${await res.text()}`);
@@ -301,13 +320,20 @@ async function main() {
     console.error("ELEVENLABS_API_KEY is not set (put it in .env.local)");
     process.exit(1);
   }
+  // In CI this script must only UPDATE the two known agents. Creating agents
+  // there would silently mint a new agent on every push if an ID secret is
+  // missing, and nobody would see the printed IDs.
+  if (process.env.CI && !(process.env.ELEVENLABS_INTAKE_AGENT_ID && process.env.ELEVENLABS_BUYER_AGENT_ID)) {
+    console.error("CI run refused: ELEVENLABS_INTAKE_AGENT_ID and ELEVENLABS_BUYER_AGENT_ID must both be set as secrets.");
+    process.exit(1);
+  }
   const intake = await upsertAgent(process.env.ELEVENLABS_INTAKE_AGENT_ID, intakeAgent);
   console.log(`${intake.action} intake agent: ${intake.id}`);
   const buyer = await upsertAgent(process.env.ELEVENLABS_BUYER_AGENT_ID, buildBuyerAgent());
   console.log(`${buyer.action} buyer agent:  ${buyer.id}`);
   console.log(
-    process.env.PUBLIC_URL
-      ? `Buyer tools: WEBHOOK mode -> ${process.env.PUBLIC_URL}`
+    publicUrl()
+      ? `Buyer tools: WEBHOOK mode -> ${publicUrl()}`
       : "Buyer tools: CLIENT mode (browser sessions only; set PUBLIC_URL + re-run for real phone calls)",
   );
   if (intake.action === "Created" || buyer.action === "Created") {

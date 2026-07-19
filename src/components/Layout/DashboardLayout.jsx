@@ -79,8 +79,8 @@ export default function DashboardLayout({ children }) {
               collapsed ? "lg:justify-center lg:px-2" : ""
             }`}
           >
-            <span className={collapsed ? "lg:hidden" : ""}>
-              <Logo />
+            <span className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
+              <Logo className="text-base" />
             </span>
             {/* Desktop collapsed: expand */}
             <button
@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }) {
             {/* Desktop expanded: collapse */}
             <button
               onClick={toggleCollapsed}
-              className={`hidden p-1.5 -mr-3 text-muted-foreground/50 hover:text-foreground hover:bg-muted rounded transition-colors ${
+              className={`hidden flex-shrink-0 p-1.5 text-muted-foreground/50 hover:text-foreground hover:bg-muted rounded transition-colors ${
                 collapsed ? "" : "lg:inline-flex"
               }`}
               aria-label="Collapse sidebar"

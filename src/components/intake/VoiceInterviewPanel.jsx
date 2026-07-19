@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
+import { noEmDash } from "@/lib/utils";
 
 function Panel({ jobId, vertical, onSpecUpdate }) {
   const [micMuted, setMicMuted] = useState(false);
@@ -123,7 +124,7 @@ function Panel({ jobId, vertical, onSpecUpdate }) {
               <span className="mr-2 text-xs uppercase tracking-wide text-muted-foreground">
                 {m.role === "user" ? "You" : "Agent"}
               </span>
-              <span>{m.text}</span>
+              <span>{noEmDash(m.text)}</span>
             </div>
           ))}
         </div>

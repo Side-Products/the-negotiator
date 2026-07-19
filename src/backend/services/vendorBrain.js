@@ -1,6 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { complete } from "@/backend/services/llm";
 
 const REVEAL_RULES = {
   pressed_twice: "reveal it ONLY after the caller has pressed you about the total cost at least twice",
@@ -50,6 +48,7 @@ ${card.aiReaction}
 
 RULES
 - Spoken phone-call register: contractions, fillers, short sentences. No lists, no markdown.
+- Never use em dashes; use a comma or a period. No AI-writing tells ("Certainly", "Absolutely", "I understand your concern").
 - Keep every reply under 60 words.
 - You may be vague, evasive, or self-serving if that fits your persona — you're a vendor trying to win a job on your own terms.
 - Never break character. Never say you are an AI, a language model, or part of a simulation. You are ${businessName}.`;
@@ -58,29 +57,23 @@ RULES
 export const nextVendorTurn = async ({ call, job, vertical, card, lastAgentText }) => {
   const messages = (call.transcript || []).map((t) => ({
     role: t.role === "vendor" ? "assistant" : "user",
-    content: t.text,
+    text: t.text,
   }));
-  messages.push({ role: "user", content: lastAgentText });
-
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-5",
-    max_tokens: 300,
-    // Disabled: adaptive thinking would eat the small token budget and add
-    // seconds of latency to every spoken turn.
-    thinking: { type: "disabled" },
-    system: renderSystemPrompt({
-      card,
-      vertical,
-      job,
-      vendorName: call.vendorName,
-      jitter: call.pricingJitter || 1,
-    }),
-    messages,
-  });
+  messages.push({ role: "user", text: lastAgentText });
 
   const text =
-    response.content.find((b) => b.type === "text")?.text?.trim() ||
-    "Sorry, you cut out there for a second — what was that?";
+    (await complete({
+      system: renderSystemPrompt({
+        card,
+        vertical,
+        job,
+        vendorName: call.vendorName,
+        jitter: call.pricingJitter || 1,
+      }),
+      messages,
+      maxTokens: 300,
+      tier: "fast",
+    })) || "Sorry, you cut out there for a second — what was that?";
   return { text };
 };
 

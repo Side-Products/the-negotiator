@@ -4,10 +4,11 @@ import Call from "@/backend/models/call";
 import {
 	realCallsConfigured,
 	startRealCalls,
-	runRealCallsSequentially,
+	runRealCall,
+	runRealBatches,
 } from "@/backend/services/realCaller";
 
-const MAX_REAL_CALLS = 5; // hard cap: these are real businesses' phone lines
+const MAX_REAL_CALLS = 20; // hard cap: these are real businesses' phone lines
 
 export default async function handler(req, res) {
 	if (req.method !== "POST") {
@@ -27,22 +28,53 @@ export default async function handler(req, res) {
 			return res.status(409).json({ error: "Confirm the spec before starting calls" });
 		}
 
-		// Idempotent: one real-call run per job.
-		const existing = await Call.find({ jobId: job._id, mode: "real" });
-		if (existing.length) return res.status(200).json({ calls: existing, alreadyRunning: true });
+		const { total = 20, batchSize = 5, location, testNumber, redial } = req.body || {};
 
-		const { limit = 3, location } = req.body || {};
+		// After fixing an account-level dial blocker (e.g. Twilio trial), reset
+		// this job's failed real calls so the batch runner picks them up again.
+		if (redial) {
+			await Call.updateMany(
+				{ jobId: req.query.id, mode: "real", isTest: { $ne: true }, status: "failed" },
+				{ $set: { status: "pending" }, $unset: { outcome: "", statusDetail: "" } },
+			);
+		}
+
+		// Test dial: one call to the user's own phone so the whole pipeline
+		// (webhook tools, recording, transcript) can be verified before dialing
+		// real businesses. Repeatable; does not block the real run.
+		if (testNumber) {
+			const call = await Call.create({
+				jobId: job._id,
+				specVersion: job.specVersion,
+				vendorName: "Test vendor (your phone)",
+				phone: testNumber,
+				round: 1,
+				mode: "real",
+				isTest: true,
+				status: "pending",
+			});
+			runRealCall(call._id).catch((e) => console.error("test call failed:", e));
+			return res.status(200).json({ calls: [call], test: true });
+		}
+
+		// Idempotent: one real-call run per job (test dials excluded). Re-POST
+		// resumes an orphaned run; the runner is a no-op while one is active.
+		const existing = await Call.find({ jobId: job._id, mode: "real", isTest: { $ne: true } });
+		if (existing.length) {
+			runRealBatches(job._id).catch((e) => console.error("real resume failed:", e));
+			return res.status(200).json({ calls: existing, alreadyRunning: true });
+		}
+
 		const { calls } = await startRealCalls(job, {
-			limit: Math.min(limit, MAX_REAL_CALLS),
+			total: Math.min(total, MAX_REAL_CALLS),
+			batchSize,
 			location,
 		});
 		job.status = "calling";
 		await job.save();
 
-		// Sequential dialing, fire and forget; the UI polls for progress.
-		runRealCallsSequentially(calls.map((c) => c._id)).catch((e) =>
-			console.error("real-calls run failed:", e),
-		);
+		// Batches run in this Node process; the UI polls for progress.
+		runRealBatches(job._id).catch((e) => console.error("real-calls run failed:", e));
 
 		return res.status(200).json({ calls });
 	} catch (error) {

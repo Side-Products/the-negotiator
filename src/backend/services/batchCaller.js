@@ -1,19 +1,19 @@
-// Server-side batch calling: the buyer is an Anthropic tool-using loop, the
-// vendor is the existing policy-card persona (vendorBrain). Batches run
-// sequentially; within a batch calls run concurrently. From batch 2 on, the
-// buyer carries the best committed quote so far as leverage (real quotes only,
-// same honesty guardrail as the voice path).
+// Server-side batch calling: the buyer is an LLM tool-using loop (provider via
+// llm.js: OpenAI by default, Anthropic fallback), the vendor is the existing
+// policy-card persona (vendorBrain). Batches run sequentially; within a batch
+// calls run concurrently. From batch 2 on, the buyer carries the best
+// committed quote so far as leverage (real quotes only, same honesty
+// guardrail as the voice path).
 
-import Anthropic from "@anthropic-ai/sdk";
 import Call from "@/backend/models/call";
 import Job from "@/backend/models/job";
 import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
+import { completeWithTools } from "@/backend/services/llm";
+import { renderCallAudio } from "@/backend/services/audioRenderer";
 import { nextVendorTurn } from "@/backend/services/vendorBrain";
 import { addQuoteLine, commitQuote } from "@/backend/services/quoteOps";
-import { discoverVendors } from "@/backend/services/vendorDiscovery";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { discoverVendors, jobMarketLocation } from "@/backend/services/vendorDiscovery";
 
 const MAX_BUYER_TURNS = 24; // hard stop per call
 
@@ -21,7 +21,7 @@ const BUYER_TOOLS = [
 	{
 		name: "log_quote_item",
 		description: "Record one itemised fee line the vendor just stated.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				fee_key: { type: "string" },
@@ -36,7 +36,7 @@ const BUYER_TOOLS = [
 		name: "commit_quote",
 		description:
 			"Commit the vendor's final quote. Returns the recomputed total and any red flags — react to them before ending the call.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				total: { type: "number" },
@@ -49,7 +49,7 @@ const BUYER_TOOLS = [
 	{
 		name: "record_negotiation_event",
 		description: "Record a price movement caused by a negotiation lever.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				lever_id: { type: "string" },
@@ -63,7 +63,7 @@ const BUYER_TOOLS = [
 	{
 		name: "log_outcome",
 		description: "Record how the call ended when there is no committed quote.",
-		input_schema: {
+		schema: {
 			type: "object",
 			properties: {
 				type: { type: "string", enum: ["callback", "declined"] },
@@ -108,7 +108,12 @@ HOW TO RUN THE CALL:
 - Only call record_negotiation_event when a total the vendor stated earlier in THIS call actually changed. Never for the first number you hear.
 - NEVER commit a single lump-sum line. Get the breakdown (labor, travel, fuel, materials, fees) as separate log_quote_item calls first. A quote with fewer than 3 lines is not itemised.
 - End with commit_quote or log_outcome, then say a brief goodbye.
-- Spoken phone register. Keep every reply under 50 words.`;
+- If they refuse to quote by phone: ask once for a typical range, then log_outcome callback (or declined) noting they do not quote by phone.
+- If they offer a better price for describing the job as smaller than it is: refuse, the job is exactly as specified.
+- If they push add-ons the job did not ask for: decline them and get the total without extras.
+- If they accuse you of bluffing about a competing bid: offer its amount and line items (never the company). No leverage means saying plainly you have no other bid yet.
+- Spoken phone register. Keep every reply under 50 words.
+- Never use em dashes; use a comma or a period. No AI-writing tells ("Certainly", "Absolutely", "Great question"), no lists in speech, vary your acknowledgments.`;
 };
 
 // One complete buyer<->vendor call, entirely server-side.
@@ -154,25 +159,22 @@ export const runCall = async (callId) => {
 	await pushTurn("vendor", greeting);
 
 	const system = buyerSystem({ job, vertical, call, leverage, priorQuote });
-	const messages = [{ role: "user", content: greeting }];
+	const history = [{ role: "user", text: greeting }];
 	let itemisationNudged = false;
 
 	try {
 		for (let i = 0; i < MAX_BUYER_TURNS; i++) {
-			const response = await anthropic.messages.create({
-				model: "claude-sonnet-5",
-				max_tokens: 600,
-				thinking: { type: "disabled" },
+			const { text, toolCalls: toolUses } = await completeWithTools({
 				system,
+				history,
 				tools: BUYER_TOOLS,
-				messages,
+				maxTokens: 600,
+				tier: "fast",
 			});
 
-			const text = response.content.find((b) => b.type === "text")?.text?.trim();
-			const toolUses = response.content.filter((b) => b.type === "tool_use");
 			let turnRef = call.transcript.length - 1;
 			if (text) turnRef = await pushTurn("agent", text);
-			messages.push({ role: "assistant", content: response.content });
+			history.push({ role: "assistant", text, toolCalls: toolUses });
 
 			if (toolUses.length) {
 				const results = [];
@@ -220,12 +222,12 @@ export const runCall = async (callId) => {
 						result = { ok: true };
 					}
 					results.push({
-						type: "tool_result",
-						tool_use_id: tu.id,
+						id: tu.id,
+						name: tu.name,
 						content: JSON.stringify(result || {}),
 					});
 				}
-				messages.push({ role: "user", content: results });
+				history.push({ role: "toolResults", results });
 				continue; // let the buyer react to tool results before the vendor speaks
 			}
 
@@ -236,7 +238,7 @@ export const runCall = async (callId) => {
 			if (!text) break;
 			const vendor = await nextVendorTurn({ call, job, vertical, card, lastAgentText: text });
 			await pushTurn("vendor", vendor.text);
-			messages.push({ role: "user", content: vendor.text });
+			history.push({ role: "user", text: vendor.text });
 		}
 
 		if (!call.outcome?.type) {
@@ -244,6 +246,12 @@ export const runCall = async (callId) => {
 		}
 		call.status = "done";
 		await call.save();
+
+		// Give committed quotes a playable audio rendering (buyer + vendor voices).
+		// Detached: rendering takes ~30s and must not slow the batch down.
+		if (call.outcome?.type === "quote") {
+			renderCallAudio(call._id).catch((e) => console.error("audio render failed:", e));
+		}
 	} catch (error) {
 		console.error(`batch call ${callId} failed:`, error);
 		call.status = "failed";
@@ -255,9 +263,24 @@ export const runCall = async (callId) => {
 
 // Create the full batch call list up front (so the UI shows the whole market
 // immediately), assigning each real vendor a hidden policy card + price jitter.
-export const createBatchCalls = async (job, { total = 20, batchSize = 5, location }) => {
+export const createBatchCalls = async (job, { total = 20, batchSize = 5, batchSizes, location }) => {
 	const vertical = getVertical(job.vertical);
-	const vendors = await discoverVendors(job.vertical, location || "Rock Hill, SC", { limit: total });
+	const where = location || jobMarketLocation(job, vertical) || "Rock Hill, SC";
+
+	// batchSizes ([3, 3, 4]) overrides the uniform batchSize split.
+	const sizes = Array.isArray(batchSizes) && batchSizes.length ? batchSizes : null;
+	if (sizes) total = sizes.reduce((a, b) => a + b, 0);
+	const batchFor = (i) => {
+		if (!sizes) return Math.floor(i / batchSize) + 1;
+		let boundary = 0;
+		for (let b = 0; b < sizes.length; b++) {
+			boundary += sizes[b];
+			if (i < boundary) return b + 1;
+		}
+		return sizes.length;
+	};
+
+	const vendors = await discoverVendors(job.vertical, where, { limit: total });
 	const cards = vertical.vendorPolicyCards;
 	const docs = [];
 	for (let i = 0; i < total; i++) {
@@ -267,11 +290,14 @@ export const createBatchCalls = async (job, { total = 20, batchSize = 5, locatio
 			jobId: job._id,
 			specVersion: job.specVersion,
 			vendorName: name,
+			phone: vendor.phone,
+			placeId: vendor.placeId,
+			rating: vendor.rating,
 			policyCardId: cards[i % cards.length].id,
 			round: 1,
 			mode: "sim",
 			status: "pending",
-			batch: Math.floor(i / batchSize) + 1,
+			batch: batchFor(i),
 			pricingJitter: 0.9 + Math.random() * 0.25,
 		});
 	}
@@ -280,33 +306,52 @@ export const createBatchCalls = async (job, { total = 20, batchSize = 5, locatio
 
 // Run all batches sequentially; within a batch, calls run concurrently.
 // Batch 2+ carries the best committed non-lowball quote so far as leverage.
-export const runBatchesForJob = async (jobId) => {
-	const calls = await Call.find({ jobId, batch: { $exists: true }, status: "pending" }).sort({
-		batch: 1,
-	});
-	const batches = [...new Set(calls.map((c) => c.batch))].sort((a, b) => a - b);
+// Re-entrant and restart-safe: a second invocation while a run is active is a
+// no-op, and calls orphaned by a server restart (stuck "live" with no voice
+// session) are reset to pending and picked up again.
+const activeRuns = new Set();
 
-	for (const b of batches) {
-		if (b > 1) {
-			const committed = await Quote.find({ jobId, committed: true });
-			const best = committed
-				.filter((q) => !(q.redFlags || []).some((f) => f.id === "lowball"))
-				.sort((x, y) => x.total - y.total || (y.guaranteed === true) - (x.guaranteed === true))[0];
-			if (best) {
-				await Call.updateMany(
-					{ jobId, batch: b, status: "pending" },
-					{ $set: { leverageQuoteIds: [best._id] } },
-				);
+export const runBatchesForJob = async (jobId) => {
+	const key = jobId.toString();
+	if (activeRuns.has(key)) return;
+	activeRuns.add(key);
+	try {
+		// Recover orphans: a live sim batch call with no ElevenLabs session can
+		// only be driven by this process; if no run is active, it is dead.
+		await Call.updateMany(
+			{ jobId, batch: { $exists: true }, status: "live", elevenConversationId: null },
+			{ $set: { status: "pending" } },
+		);
+
+		const calls = await Call.find({ jobId, batch: { $exists: true }, status: "pending" }).sort({
+			batch: 1,
+		});
+		const batches = [...new Set(calls.map((c) => c.batch))].sort((a, b) => a - b);
+
+		for (const b of batches) {
+			if (b > 1) {
+				const committed = await Quote.find({ jobId, committed: true });
+				const best = committed
+					.filter((q) => !(q.redFlags || []).some((f) => f.id === "lowball"))
+					.sort((x, y) => x.total - y.total || (y.guaranteed === true) - (x.guaranteed === true))[0];
+				if (best) {
+					await Call.updateMany(
+						{ jobId, batch: b, status: "pending" },
+						{ $set: { leverageQuoteIds: [best._id] } },
+					);
+				}
+			}
+			const batchCalls = calls.filter((c) => c.batch === b);
+			await Promise.allSettled(batchCalls.map((c) => runCall(c._id)));
+
+			// One retry pass per batch for transient failures (rate limits etc.).
+			const failed = await Call.find({ jobId, batch: b, status: "failed" });
+			if (failed.length) {
+				await Promise.allSettled(failed.map((c) => runCall(c._id)));
 			}
 		}
-		const batchCalls = calls.filter((c) => c.batch === b);
-		await Promise.allSettled(batchCalls.map((c) => runCall(c._id)));
-
-		// One retry pass per batch for transient failures (rate limits etc.).
-		const failed = await Call.find({ jobId, batch: b, status: "failed" });
-		if (failed.length) {
-			await Promise.allSettled(failed.map((c) => runCall(c._id)));
-		}
+	} finally {
+		activeRuns.delete(key);
 	}
 };
 

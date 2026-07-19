@@ -2,6 +2,7 @@
 // left (muted). `highlightTurns` flags turnRefs with a "leverage" badge.
 
 import { useEffect, useRef } from "react";
+import { noEmDash } from "@/lib/utils";
 
 const isBuyer = (role) => role === "buyer" || role === "agent" || role === "assistant";
 
@@ -43,7 +44,7 @@ export default function TranscriptView({ transcript, turns, highlightTurns = [],
                 </span>
                 {highlighted && <span className="badge badge-warning">leverage</span>}
               </div>
-              <p className="whitespace-pre-wrap text-foreground">{t.text}</p>
+              <p className="whitespace-pre-wrap text-foreground">{noEmDash(t.text)}</p>
             </div>
           </div>
         );

@@ -9,9 +9,18 @@ const autobody = {
   id: "autobody",
   label: "Auto Body Repair",
   tagline: "Get itemised collision-repair estimates and make body shops compete.",
+  // Spec fields (in preference order) that locate the market for vendor search.
+  marketLocationFields: ["location"],
 
   jobSpec: {
     fields: [
+      {
+        key: "location",
+        label: "Vehicle location",
+        type: "string",
+        required: true,
+        ask: "What city is the vehicle in? That's where we'll look for shops.",
+      },
       {
         key: "vehicle",
         label: "Vehicle",

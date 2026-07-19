@@ -49,7 +49,7 @@ function MyApp({ Component, pageProps }) {
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
-        <title>The Negotiator</title>
+        <title>Haggle</title>
       </Head>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
         <div className={`app-fonts ${jakarta.variable} ${dmSans.variable}`}>{content}</div>

@@ -3,8 +3,10 @@ import Job from "@/backend/models/job";
 import Call from "@/backend/models/call";
 import getVertical from "@/config/verticals";
 
-// Creates a single live role-play call (human plays the vendor via the browser
-// mic against the buyer agent). Batch/sim calls go through /batch-calls.
+// Creates a single LIVE browser call: role-play (human plays the vendor via
+// the mic) or sim (agent vs agent — buyer voice session + vendor persona
+// spoken via TTS). Live sim calls carry NO batch number, so the server-side
+// batch runner never touches them. Batch calls go through /batch-calls.
 export default async function handler(req, res) {
 	if (req.method !== "POST") {
 		return res.status(405).json({ error: "Method not allowed" });
@@ -19,14 +21,20 @@ export default async function handler(req, res) {
 		const vertical = getVertical(job.vertical);
 		if (!vertical) return res.status(400).json({ error: "Unknown vertical" });
 
-		const count = await Call.countDocuments({ jobId: job._id, mode: "roleplay" });
+		const mode = (req.body || {}).mode === "sim" ? "sim" : "roleplay";
+		const count = await Call.countDocuments({ jobId: job._id, mode, batch: { $exists: false } });
+		// Live sim calls rotate through the policy cards so repeated demos show
+		// distinct negotiation styles.
+		const card = vertical.vendorPolicyCards[count % vertical.vendorPolicyCards.length];
 		const call = await Call.create({
 			jobId: job._id,
 			specVersion: job.specVersion,
-			vendorName: (req.body || {}).vendorName || `Role-play vendor ${count + 1}`,
-			policyCardId: vertical.vendorPolicyCards[0].id,
+			vendorName:
+				(req.body || {}).vendorName ||
+				(mode === "sim" ? card.businessName : `Role-play vendor ${count + 1}`),
+			policyCardId: card.id,
 			round: 1,
-			mode: "roleplay",
+			mode,
 			status: "pending",
 		});
 

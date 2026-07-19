@@ -162,6 +162,25 @@ select:focus-visible {
   );
 }
 
+/* Larger bevel for hero/footer panels (viraloop PANEL_CLIP). */
+.cut-corners-lg {
+  clip-path: polygon(
+    24px 0,
+    100% 0,
+    100% calc(100% - 24px),
+    calc(100% - 24px) 100%,
+    0 100%,
+    0 24px
+  );
+}
+
+/* Faint dotted grid for section texture — paints with the theme border color,
+   so it reads in both light and dark. Pair with a radial mask to fade edges. */
+.bg-dot-grid {
+  background-image: radial-gradient(hsl(var(--border)) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
 /* Collapsed dashboard sidebar (icon rail): nav labels turn into hover tooltips.
    Desktop only — the mobile drawer always shows full labels. */
 @media (min-width: 1024px) {

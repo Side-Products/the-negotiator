@@ -1,5 +1,5 @@
 {
-  "name": "the-negotiator",
+  "name": "haggle",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,7 +8,8 @@
     "start": "next start -p 3001",
     "seed": "node src/scripts/seedDemoJob.js",
     "create-agents": "node src/scripts/createAgents.js",
-    "test:contracts": "node src/scripts/testSpecContracts.js"
+    "test:contracts": "node src/scripts/testSpecContracts.js",
+    "eval": "node src/scripts/evalJob.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",

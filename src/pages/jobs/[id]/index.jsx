@@ -83,6 +83,7 @@ export default function JobMissionControl() {
   const vertical = getVertical(job.vertical);
 
   const committedQuotes = quotes.filter((q) => q.committed);
+  const hasReport = Boolean(job.report?.narrative);
   const hasRound2 = calls.some((c) => c.round === 2);
   const allDone =
     calls.length > 0 && calls.every((c) => c.status === "done" || c.status === "failed");
@@ -124,18 +125,24 @@ export default function JobMissionControl() {
   };
 
   const startCalls = run("calls", () =>
-    api(`/api/jobs/${id}/batch-calls`, "POST", { total: 20, batchSize: 5 }),
+    api(`/api/jobs/${id}/batch-calls`, "POST", { batchSizes: [3, 3, 4] }),
   );
   const startRealCalls = run("real", async () => {
     if (
       !window.confirm(
-        "This dials 3 real businesses from Google Places, one at a time. The agent discloses it is an AI and that the call is recorded. Continue?",
+        "This dials up to 20 REAL businesses near the job's location, in 4 batches of 5. The agent discloses it is an AI and that the call is recorded. Batch 1 sets the baseline; later batches negotiate with it. Continue?",
       )
     )
       return;
-    await api(`/api/jobs/${id}/real-calls`, "POST", { limit: 3 });
+    const data = await api(`/api/jobs/${id}/real-calls`, "POST", { total: 20, batchSize: 5 });
+    toast.success(
+      data.alreadyRunning
+        ? "Real-call run resumed. Watch the cards for live progress."
+        : `Dialing ${data.calls.length} vendors in batches of 5. Cards update live as calls progress.`,
+    );
   });
   const addRolePlay = run("roleplay", () => api(`/api/jobs/${id}/calls`, "POST", { mode: "roleplay" }));
+  const addLiveSim = run("livesim", () => api(`/api/jobs/${id}/calls`, "POST", { mode: "sim" }));
   const negotiate = run("negotiate", () => api(`/api/jobs/${id}/negotiate`, "POST", {}));
   const generateReport = run("report", async () => {
     await api(`/api/jobs/${id}/report`, "POST", {});
@@ -154,7 +161,7 @@ export default function JobMissionControl() {
       <div className="flex flex-wrap items-center gap-3">
         {batchCalls.length === 0 && (
           <CutButton onClick={startCalls} disabled={!job.confirmed || busy === "calls"}>
-            {busy === "calls" ? "Dialing the market…" : "Start calls (20 vendors, batches of 5)"}
+            {busy === "calls" ? "Dialing the market…" : "Start calls (10 vendors, 3 batches)"}
           </CutButton>
         )}
         <CutButton
@@ -166,11 +173,19 @@ export default function JobMissionControl() {
         </CutButton>
         <CutButton
           variant="outline"
+          onClick={addLiveSim}
+          disabled={!job.confirmed || busy === "livesim"}
+          title="Buyer agent negotiates out loud with an AI vendor persona in its own voice"
+        >
+          {busy === "livesim" ? "Adding…" : "+ Live agent-vs-agent call"}
+        </CutButton>
+        <CutButton
+          variant="outline"
           onClick={startRealCalls}
           disabled={!job.confirmed || busy === "real"}
           title="Requires ELEVENLABS_PHONE_NUMBER_ID and PUBLIC_URL"
         >
-          {busy === "real" ? "Dialing…" : "Start real calls (3)"}
+          {busy === "real" ? "Dialing…" : "Start real calls (4 batches of 5)"}
         </CutButton>
         {!job.confirmed && (
           <span className="text-xs text-muted-foreground">
@@ -191,9 +206,16 @@ export default function JobMissionControl() {
             {busy === "negotiate" ? "Setting up…" : "Negotiate round 2"}
           </CutButton>
         )}
+        {hasReport && (
+          <CutButton href={`/jobs/${id}/report`}>View report</CutButton>
+        )}
         {allDone && (
           <CutButton variant="outline" onClick={generateReport} disabled={busy === "report"}>
-            {busy === "report" ? "Generating…" : "Generate report"}
+            {busy === "report"
+              ? "Generating…"
+              : hasReport
+                ? "Regenerate report"
+                : "Generate report"}
           </CutButton>
         )}
         {calls.length > 0 && committedQuotes.length < 2 && !hasRound2 && (

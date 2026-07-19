@@ -9,7 +9,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Wasabi when configured (recordingPath = object key, e.g. "recordings/x.mp3"),
 // local public/ dir otherwise (recordingPath = "/recordings/x.mp3").
-const storeRecording = async (callId, buffer) => {
+export const storeRecording = async (callId, buffer) => {
 	if (wasabiConfigured()) {
 		const key = `recordings/${callId}.mp3`;
 		await uploadBuffer(buffer, key, "audio/mpeg");

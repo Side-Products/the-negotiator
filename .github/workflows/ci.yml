@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # manual re-run, e.g. after changing the PUBLIC_URL secret
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  # Deploys the ElevenLabs agent config (prompts + tools) after a green build
+  # on main. Updates the two existing agents in place; refuses to create.
+  update-agents:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # createAgents.js has zero npm dependencies, so no install needed.
+      - run: node src/scripts/createAgents.js
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_INTAKE_AGENT_ID: ${{ secrets.ELEVENLABS_INTAKE_AGENT_ID }}
+          ELEVENLABS_BUYER_AGENT_ID: ${{ secrets.ELEVENLABS_BUYER_AGENT_ID }}
+          PUBLIC_URL: ${{ secrets.PUBLIC_URL }}

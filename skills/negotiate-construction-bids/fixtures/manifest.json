@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "NegotiationFixtureManifestV1",
+  "status": "required_inputs_not_yet_added",
+  "warning": "No fixture in this manifest is market evidence. Do not claim demo evaluation until all files, licenses, gold labels, and eval results exist in the exact submission commit.",
+  "referenceCase": {
+    "trade": "tischlerarbeiten",
+    "requiredArtifacts": [
+      {
+        "id": "tischler-x83",
+        "phase": "X83",
+        "format": "GAEB_DA_XML_3.3",
+        "purpose": "One usage-cleared or synthetic private B2B tender package",
+        "present": false
+      },
+      {
+        "id": "tischler-x84-a",
+        "phase": "X84",
+        "format": "GAEB_DA_XML_3.3",
+        "purpose": "Complete and transparent submitted bid",
+        "present": false
+      },
+      {
+        "id": "tischler-x84-b",
+        "phase": "X84",
+        "format": "GAEB_DA_XML_3.3",
+        "purpose": "Lower headline price with labeled missing or unclear mandatory positions",
+        "present": false
+      },
+      {
+        "id": "tischler-x84-c",
+        "phase": "X84",
+        "format": "GAEB_DA_XML_3.3",
+        "purpose": "Higher submitted bid with policy-driven commercial movement",
+        "present": false
+      }
+    ],
+    "requiredGoldLabels": [
+      "artifact_hashes",
+      "canonical_scope_hash",
+      "bid_content_hashes",
+      "position_mapping",
+      "missing_added_changed_and_unpriced_positions",
+      "expected_arithmetic",
+      "comparability_status",
+      "allowed_and_blocked_leverage",
+      "expected_human_escalations"
+    ]
+  },
+  "crossTradeConformance": [
+    {
+      "trade": "trockenbau",
+      "purpose": "Prove structural parsing, mapping, hashing, and missing-position detection without trade-specific technical claims",
+      "present": false,
+      "productionValidated": false
+    },
+    {
+      "trade": "elektro",
+      "purpose": "Prove generic safe mode and technical-alternative escalation without core code changes",
+      "present": false,
+      "productionValidated": false
+    }
+  ],
+  "roleplayers": {
+    "count": 3,
+    "consentRequired": true,
+    "receiveBehaviorPolicyNotDialogue": true,
+    "germanCalls": true,
+    "englishSubtitles": true
+  }
+}
