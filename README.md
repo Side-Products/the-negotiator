@@ -9,7 +9,7 @@ Built for the Hack-Nation 6th Global AI Hackathon, ElevenLabs Challenge 01. The 
 ## GAEB construction handoff
 
 - [Architecture brief — Claus](docs/GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md): product boundary, data contracts, proof-carrying wedge, delivery phases, acceptance tests, and demo script.
-- [Multi-outbound orchestration skill](skills/orchestrate-construction-outbound-calls/SKILL.md): invited-supplier briefing, X84 handoff, strategy bridge, and three bounded second-call tactics.
+- [Multi-outbound orchestration skill](skills/orchestrate-construction-outbound-calls/SKILL.md): invited-supplier briefing, X84 handoff, strategy bridge, three bounded second-call tactics, and event-driven voice delivery.
 - [Construction negotiation skill](skills/negotiate-construction-bids/SKILL.md): live conversation and negotiation policy.
 - [Runtime policy](skills/negotiate-construction-bids/runtime.json): machine-readable gates, states, red flags, leverage, and report policy.
 - [Tischlerarbeiten profile](skills/negotiate-construction-bids/profiles/tischlerarbeiten.json): triggered reference-demo questions and mandatory escalations.

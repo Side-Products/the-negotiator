@@ -31,7 +31,8 @@ Load these sources before planning a call:
 2. Use the [GAEB architecture brief](../../docs/GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md) for scope identity, immutable artifacts, claims, mandates, and report contracts.
 3. Use the [portfolio strategy brief](../../docs/NEGOTIATION_STRATEGY_LAYERS_CLAUS.md) for strategy snapshots, relationship memory, information classes, live events, and strategy patches.
 4. Consult the base [evidence register](../negotiate-construction-bids/EVIDENCE.md) before choosing a tactic or explaining German legal boundaries.
-5. Load the [Tischlerarbeiten profile](../negotiate-construction-bids/profiles/tischlerarbeiten.json) only after the user confirms that trade. Use base-skill generic mode for every unvalidated trade.
+5. Load the [voice strategy](../negotiate-construction-bids/references/VOICE_STRATEGY.md) before either call. Keep tactic, delivery mode, and platform conversation-flow settings separate.
+6. Load the [Tischlerarbeiten profile](../negotiate-construction-bids/profiles/tischlerarbeiten.json) only after the user confirms that trade. Use base-skill generic mode for every unvalidated trade.
 
 Treat this skill as the lifecycle orchestrator. Treat the base skill and runtime as authoritative for GAEB leveling, Call 2, evidence, disclosure, recording, leverage, and reporting. Apply the stricter rule if sources differ. Fail closed when a required policy source is unavailable.
 
@@ -117,6 +118,7 @@ TenderBriefingPlanV1
 - clarification channel and response owner
 - prohibited disclosures and technical escalation route
 - opening, agenda, questions and recap schema
+- approved `VoicePlanV1` for a warm, neutral briefing delivery
 - recording policy and human-handoff route
 - briefingCoreHash and validUntil
 ```
@@ -124,6 +126,8 @@ TenderBriefingPlanV1
 Do not include a buyer budget, target, reservation boundary, weak BATNA, competitor information, discount request, unapproved urgency, future-work promise, or Call 2 strategy.
 
 ## Conduct Call 1 — `TENDER_BRIEFING`
+
+Start in `WARM_COLLABORATIVE`: friendly, unhurried, and factual. Never use a hardline posture, price surprise, or competitive tone in this briefing. Yield to interruptions and use sparse semantic backchannels without implying agreement.
 
 ### Open transparently
 
@@ -188,6 +192,7 @@ TenderBriefingRecordV1
 - anticipatedAssumptionsExclusionsAlternates[]
 - leadTimesDependenciesLogistics[]
 - relationshipReferences[] explicitly stated in this project context
+- explicitLanguageOrRegisterPreference and evidence
 - estimatorOwner and submissionContact
 - submissionCommitment: artifact, format, channel and dueAt
 - callbackCommitments[]
@@ -255,6 +260,7 @@ Create the `PreStrategySnapshotV1` defined in the portfolio strategy brief. Add:
 - selectedPrimaryTactic
 - permittedFallbackTactic
 - tacticEligibilityEvidenceIds[]
+- voicePlanId, initialDeliveryMode and permitted event-driven delivery transitions
 ```
 
 Convert Call 1 information conservatively:
@@ -270,6 +276,7 @@ Convert Call 1 information conservatively:
 | LV question | durable package clarification or escalation | private scope amendment |
 | Contact/role | route Call 2 and request authority confirmation | assume power to bind the company |
 | Relationship reference | apply an internal guardrail or ask whether it still applies | personality score, entitlement, or implied future-work promise |
+| Explicit language/register preference | compile a supported preapproved voice profile | infer origin, imitate accent, or change commercial strategy |
 | Unsolicited price indication | question-only context | comparison, target, anchor, BATNA, or leverage |
 
 Ask whether a prior constraint still applies before using it:
@@ -292,7 +299,9 @@ Success means a comparable, capped, evidenced offer or a visible unresolved bloc
 
 ## Select Exactly One of Three Call 2 Tactics
 
-Activate one primary tactic per negotiation-ready supplier. Permit at most one preapproved fallback at a safe turn boundary. Stop after the first effective movement and request a revised X84. Do not introduce a fourth tactic family.
+Activate one primary tactic per negotiation-ready supplier. Permit at most one preapproved fallback at a safe turn boundary. Treat movement as effective only when it is specific, evidence-capturable, inside mandate, and demands no unauthorized buyer return. Stop after the first effective movement and request a revised X84; otherwise the one approved fallback may still be used. Do not introduce a fourth tactic family.
+
+Do not equate tactic with tone. Use `WARM_COLLABORATIVE`, `CALM_DIRECT`, or `PROCEDURAL_FIRM` from the voice strategy as an orthogonal delivery state. The demo may preselect different initial combinations; a production call may switch delivery mode on an observable event, while tactic changes remain restricted to the approved primary/fallback policy.
 
 ### Tactic 1 — Evidenced Price Improvement
 
@@ -310,7 +319,7 @@ Keep competitor identity and exact line-item prices confidential by default. Sta
 
 ### Tactic 2 — Authorized Conditional Exchange
 
-Select `AUTHORIZED_CONDITIONAL_EXCHANGE` only when a current supplier constraint has been confirmed and the buyer has approved a specific schedule, payment, logistics, sequence, validity, or documentation concession with a known cost and required return.
+Select `AUTHORIZED_CONDITIONAL_EXCHANGE` only when a current supplier constraint has been confirmed and the buyer has approved a specific schedule, payment, logistics, sequence, validity, or documentation concession with a known cost and required return. Fix every calculation base, trigger, excluded item, tax treatment, expiry, and minimum supplier return before dialing.
 
 Diagnose without promising:
 
@@ -334,13 +343,15 @@ Tie the request to a durable revised bid or addendum. Do not describe a vague ex
 
 ## Conduct Call 2
 
-Delegate Call 2 behavior to the base skill. Pin the exact strategy, mandate, `scopeHash`, supplier bid version, primary tactic, fallback, and evidence IDs before dialing.
+Delegate Call 2 behavior to the base skill. Pin the exact strategy, mandate, `scopeHash`, supplier bid version, primary tactic, fallback, evidence IDs, and approved `VoicePlanV1` before dialing.
 
 Open with:
 
 > Guten Tag, ich bin ein KI-Assistent und rufe im Auftrag von [GU] zu Ihrer X84 [Version] für [Projekt/Los/Gewerk] an. Ich darf offene Punkte klären und innerhalb eines begrenzten Mandats verhandeln, aber nichts beauftragen oder annehmen. Spreche ich mit der für dieses Angebot zuständigen Person?
 
 Set a two- or three-issue agenda. Ask one question at a time. Keep Call 1 facts internal until their approved, evidence-labelled use becomes necessary. Never read the entire strategy, target, urgency, relationship memory, or competitor record into the voice prompt.
+
+React naturally without performing emotion. On an extreme number, pause, verify amount, scope, and unit, ask for its written basis, and only then use eligible contrast or a counter-move. On interruption, stop and yield. On two vague answers, switch to `PROCEDURAL_FIRM`. Never laugh, gasp, sigh, mock, mirror a dialect, or change commercial strategy from perceived emotion, accent, hesitation, or pitch.
 
 Record each move as a `NegotiationEvent` with tactic, ask, evidence, disclosure, concession, buyer cost, before, after, delta, and confirmation state.
 
@@ -374,6 +385,8 @@ Use behavioral policies, not written dialogue:
 - Supplier B: low headline bid with a material omission; demonstrate the mandatory comparability clarification and block false leverage. After a revised X84, use `NON_PRICE_CERTAINTY_IMPROVEMENT` only if negotiation readiness is restored.
 - Supplier C: complete and price-defensive; demonstrate `EVIDENCED_PRICE_IMPROVEMENT` as the live hero call.
 
+Give roleplayers event-capable policies, not lines. Include an unscripted interruption, extreme number, conditional offer, or human request so the visible delivery mode changes while evidence and mandate remain fixed. A natural or regional voice must still disclose AI in the first sentence.
+
 Time-compress Call 1 honestly. Show each briefing outcome and a visible elapsed-time transition before X84 receipt. Label roleplayers and fixtures as synthetic or consented. Keep full recordings, transcripts, artifact versions, and outcome cards available.
 
 Show this causal chain for the hero call:
@@ -398,6 +411,8 @@ Never:
 - treat a pre-bid statement, intent, promise, or price indication as an X84;
 - answer outside the X83 or silently change scope by phone;
 - exploit personality, emotion, accent, hesitation, urgency, or perceived weakness;
+- conceal AI identity through a human name, lifelike voice, filler, or dialect;
+- imitate the supplier's accent, dialect, volume, anger, or mannerisms;
 - copy one supplier's raw transcript into another supplier's prompt;
 - use different-scope, expired, incomplete, unconfirmed, or non-disclosable bids as leverage;
 - invent budget, deadline, scarcity, authority, approval, competitor bid, or future work;
@@ -420,6 +435,10 @@ Require tests showing that:
 - Tactic 1 fails closed for non-comparable or non-disclosable evidence;
 - Tactic 2 cannot spend an unapproved or duplicate concession;
 - Tactic 3 records a measurable durable term rather than vague goodwill;
+- AI disclosure remains complete and a robot question receives a direct answer;
+- extreme numbers are verified before any counter-move and never trigger ridicule or invented anchors;
+- delivery modes respond only to logged dialogue events and never alter mandate or tactic eligibility;
+- fillers never signal acceptance, dialect is opt-in and no accent mimicry occurs;
 - material cross-call updates require an approved versioned patch;
 - every Call 2 change has before/after values and causal evidence;
 - every recap excludes binding intent and requests durable confirmation; and
