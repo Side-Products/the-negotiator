@@ -3,6 +3,7 @@
 ## Current architecture
 
 - [GAEB negotiation architecture brief — Claus](GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md)
+- [Portfolio pre-strategy and live-strategy layers — Claus](NEGOTIATION_STRATEGY_LAYERS_CLAUS.md)
 - [Implementation TODO](TODO.md)
 
 ## Hackathon research
