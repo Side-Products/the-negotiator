@@ -2,6 +2,7 @@ import dbConnect from "@/lib/dbConnect";
 import Job from "@/backend/models/job";
 import Call from "@/backend/models/call";
 import Quote from "@/backend/models/quote";
+import { applySpecPatch, validationMessage } from "@/backend/services/jobSpec";
 
 export default async function handler(req, res) {
 	try {
@@ -38,7 +39,14 @@ export default async function handler(req, res) {
 			} catch {
 				// fall back to the raw string
 			}
-			job.spec = { ...(job.spec || {}), [field_key]: value };
+				const result = applySpecPatch(job.vertical, job.spec, { [field_key]: value });
+				if (!result.valid) {
+					return res.status(422).json({
+						error: validationMessage(result.errors),
+						errors: result.errors,
+					});
+				}
+				job.spec = result.spec;
 			job.markModified("spec");
 			job.specSource =
 				job.specSource === "doc" || job.specSource === "both" ? "both" : "voice";

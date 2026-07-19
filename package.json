@@ -8,6 +8,7 @@
     "start": "next start -p 3001",
     "seed": "node src/scripts/seedDemoJob.js",
     "create-agents": "node src/scripts/createAgents.js",
+    "test:contracts": "node src/scripts/testSpecContracts.js",
     "eval": "node src/scripts/evalJob.js"
   },
   "dependencies": {
