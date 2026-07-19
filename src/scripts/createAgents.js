@@ -361,17 +361,16 @@ function buildBuyerAgent() {
   return {
     name: "Haggle — Buyer",
     conversation_config: {
-      // Eric ("Smooth, Trustworthy", conversational): a competent-assistant
-      // register for vendor calls. Turbo (not v3) because negotiation latency
-      // matters more than expressiveness on the phone; lower stability adds
-      // natural variation, slight speed lift matches phone pacing.
+      // Same voice and model as the intake interviewer (Jessica on expressive
+      // v3 conversational): the person who interviewed the customer is audibly
+      // the same one calling vendors on their behalf. Keep in sync with the
+      // intake tts block and audioRenderer's BUYER_VOICE_ID.
       tts: {
-        voice_id: "cjVigY5qzO86Huf0OWal",
-        // English agents must use the v2 English models (platform rule).
-        model_id: "eleven_turbo_v2",
-        stability: 0.4,
-        similarity_boost: 0.85,
-        speed: 1.03,
+        voice_id: "cgSgspJ2msm6clMCkdW9",
+        model_id: "eleven_v3_conversational",
+        expressive_mode: true,
+        stability: 0.5,
+        similarity_boost: 0.8,
       },
       agent: {
         first_message:

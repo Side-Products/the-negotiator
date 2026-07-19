@@ -135,12 +135,18 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   const vendorControls = useRef(null);
 
   // Counter-mode turn-taking: transcript events fire when a turn is GENERATED,
-  // while its audio is still playing. Relaying immediately makes the two
-  // agents talk over each other. So relayed text is queued and only delivered
-  // when BOTH sessions are audibly quiet (tracked via onModeChange) plus a
-  // short natural gap.
+  // usually BEFORE its audio starts playing. In that window both sessions look
+  // quiet, so a naive quiet-gate front-runs the audio and the agents talk over
+  // each other. Two signals close the gap:
+  // - speaking flags (onModeChange): is a session's audio playing right now
+  // - audio debts: a timestamp set when a side's text is queued (its audio is
+  //   still coming) and cleared the moment that side actually starts speaking.
+  // Nothing is relayed while either side speaks OR owes audio, plus a short
+  // natural gap. Debts expire after 6s so a turn with no audio can't deadlock.
   const buyerSpeakingRef = useRef(false);
   const vendorSpeakingRef = useRef(false);
+  const buyerOwesAudioRef = useRef(0);
+  const vendorOwesAudioRef = useRef(0);
   const toVendorRef = useRef("");
   const toBuyerRef = useRef("");
   const relayInFlightRef = useRef(false);
@@ -181,19 +187,21 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
     return () => clearInterval(t);
   }, [status, call._id, sendContextualUpdate]);
 
-  // Counter-mode relay pump: every 250ms, if nobody has spoken for a beat,
-  // deliver exactly one queued utterance to the other agent. Buyer-to-vendor
-  // first (the buyer leads the call). This is what keeps the two voices from
-  // talking over each other.
+  // Counter-mode relay pump: every 250ms, if nobody is speaking, nobody owes
+  // audio, and it has been quiet for a beat, deliver exactly one queued
+  // utterance to the other agent. Buyer-to-vendor first (the buyer leads).
   useEffect(() => {
     if (mode !== "counter" || status !== "connected") return;
     lastQuietAtRef.current = Date.now();
+    const owes = (ref) => ref.current && Date.now() - ref.current < 6000;
     const pump = setInterval(() => {
       if (relayInFlightRef.current) return;
       const bothQuiet =
         !buyerSpeakingRef.current &&
         !vendorSpeakingRef.current &&
-        Date.now() - lastQuietAtRef.current > 450;
+        !owes(buyerOwesAudioRef) &&
+        !owes(vendorOwesAudioRef) &&
+        Date.now() - lastQuietAtRef.current > 600;
       if (!bothQuiet) return;
       if (toVendorRef.current) {
         const text = toVendorRef.current;
@@ -379,17 +387,21 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
         },
         onModeChange: ({ mode: m }) => {
           buyerSpeakingRef.current = m === "speaking";
-          if (m !== "speaking") lastQuietAtRef.current = Date.now();
+          // Audio began: the buyer's pending turn is no longer owed.
+          if (m === "speaking") buyerOwesAudioRef.current = 0;
+          else lastQuietAtRef.current = Date.now();
         },
         onMessage: ({ message, role }) => {
           if (role === "agent") {
             pushTurn("buyer", message);
             if (sim) vendorTurn(message);
             // Counter mode: queue for the relay pump instead of sending now.
+            // The queued turn's audio is still coming, so mark it owed.
             if (counter) {
               toVendorRef.current = toVendorRef.current
                 ? `${toVendorRef.current} ${message}`
                 : message;
+              buyerOwesAudioRef.current = Date.now();
             }
           } else if (!sim && !counter) {
             pushTurn("vendor", message);
@@ -512,12 +524,15 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
           controlsRef={vendorControls}
           onVendorText={(text) => {
             pushTurn("vendor", text);
-            // Queue for the relay pump; delivered when both sessions are quiet.
+            // Queue for the relay pump; the vendor's audio for this turn is
+            // still coming, so mark it owed until playback starts.
             toBuyerRef.current = toBuyerRef.current ? `${toBuyerRef.current} ${text}` : text;
+            vendorOwesAudioRef.current = Date.now();
           }}
           onVendorMode={(speaking) => {
             vendorSpeakingRef.current = speaking;
-            if (!speaking) lastQuietAtRef.current = Date.now();
+            if (speaking) vendorOwesAudioRef.current = 0;
+            else lastQuietAtRef.current = Date.now();
           }}
           onVendorDown={() => endSession()}
         />
@@ -580,6 +595,16 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
         >
           {negotiating ? "Setting up…" : "Negotiate with this vendor"}
         </button>
+      )}
+
+      {/* Call recording, once finalize has pulled it */}
+      {call.recordingPath && (
+        <audio
+          controls
+          preload="none"
+          className="h-9 w-full"
+          src={`/api/calls/${call._id}/audio`}
+        />
       )}
 
       {/* Transcript */}

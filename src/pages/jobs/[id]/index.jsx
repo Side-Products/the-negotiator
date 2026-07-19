@@ -248,7 +248,9 @@ export default function JobMissionControl() {
         {hasReport && (
           <CutButton href={`/jobs/${id}/report`}>View report</CutButton>
         )}
-        {allDone && (
+        {/* A report needs committed quotes, not a perfectly settled board:
+            never-started role-play/test cards must not block it forever. */}
+        {committedQuotes.length > 0 && (
           <CutButton variant="outline" onClick={generateReport} disabled={busy === "report"}>
             {busy === "report"
               ? "Generating…"

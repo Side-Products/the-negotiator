@@ -9,8 +9,9 @@ import Job from "@/backend/models/job";
 import getVertical from "@/config/verticals";
 import { storeRecording } from "@/backend/services/callFinalizer";
 
-// Keep in sync with the buyer agent's voice in createAgents.js (Eric).
-const BUYER_VOICE_ID = "cjVigY5qzO86Huf0OWal";
+// Keep in sync with the buyer agent's voice in createAgents.js (Jessica,
+// shared with the intake interviewer).
+const BUYER_VOICE_ID = "cgSgspJ2msm6clMCkdW9";
 
 let client = null;
 const eleven = () => (client ||= new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY }));

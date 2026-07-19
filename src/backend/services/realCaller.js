@@ -65,18 +65,22 @@ const initiateOutboundCall = async (call, dynamicVariables) => {
 };
 
 // Mirror the live conversation onto the Call doc every poll so the UI can
-// show call progress and the transcript as it grows.
+// show call progress and the transcript as it grows. The API exposes little
+// or no transcript while a phone call is in progress, so this maps whatever
+// appears, tolerating both message/text field shapes, and the full transcript
+// lands via finalize at hangup.
 const syncLiveState = async (call, conversation) => {
 	call.statusDetail = conversation.status || "in-progress";
-	if (Array.isArray(conversation.transcript) && conversation.transcript.length) {
-		call.transcript = conversation.transcript
-			.filter((t) => t.message)
-			.map((t, i) => ({
-				role: t.role === "agent" ? "agent" : "vendor",
-				text: t.message,
-				turnIndex: i,
-				at: new Date(),
-			}));
+	const turns = (conversation.transcript || [])
+		.map((t) => ({ role: t.role, text: t.message ?? t.text }))
+		.filter((t) => t.text);
+	if (turns.length > (call.transcript || []).length) {
+		call.transcript = turns.map((t, i) => ({
+			role: t.role === "agent" ? "agent" : "vendor",
+			text: t.text,
+			turnIndex: i,
+			at: new Date(),
+		}));
 	}
 	await call.save();
 };
