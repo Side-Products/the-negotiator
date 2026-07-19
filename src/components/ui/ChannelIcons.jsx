@@ -17,11 +17,15 @@ export function TelegramIcon({ className = "h-5 w-5" }) {
 	);
 }
 
-// Channel metadata for badges and links. Deep links are env-driven so the
-// join code / bot username follow the deployment, not the repo.
+// Channel metadata for badges and links. These values are PUBLIC (they are
+// rendered on the landing page for visitors to use), so the current ones are
+// baked in as defaults; NEXT_PUBLIC_* env vars still override per deployment.
+// Empty-string defaults here once hid both channel cards on production, where
+// the env vars were unset at build time.
 export const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "14155238886";
-export const WHATSAPP_JOIN_CODE = process.env.NEXT_PUBLIC_WHATSAPP_JOIN_CODE || "";
-export const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "";
+export const WHATSAPP_JOIN_CODE = process.env.NEXT_PUBLIC_WHATSAPP_JOIN_CODE || "using-main";
+export const TELEGRAM_BOT_USERNAME =
+	process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "NegotiminatorBot";
 
 export const whatsappJoinHref = () =>
 	`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`join ${WHATSAPP_JOIN_CODE}`)}`;

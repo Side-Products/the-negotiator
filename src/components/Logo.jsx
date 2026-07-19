@@ -14,10 +14,24 @@ export function Logo({ className = "" }) {
       )}
       aria-label="Haggle home"
     >
-      {/* U+FE0E forces text presentation so the glyph takes the brand color. */}
-      <span className="flex flex-shrink-0 text-[1.2em] leading-none text-primary-400 transition-transform duration-300 group-hover:scale-[1.2]">
-        &#x260E;&#xFE0E;
-      </span>
+      {/* The brand padlock, same mark as the favicon (public/favicon.svg). */}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 64 64"
+        className="h-[1.2em] w-[1.2em] flex-shrink-0 transition-transform duration-300 group-hover:scale-[1.15]"
+      >
+        <rect width="64" height="64" rx="14" className="fill-primary-400" />
+        <path
+          d="M22 30v-7a10 10 0 0 1 20 0v7"
+          fill="none"
+          stroke="#fff"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+        <rect x="16" y="30" width="32" height="24" rx="6" fill="#fff" />
+        <circle cx="32" cy="40" r="4" className="fill-primary-400" />
+        <rect x="30" y="42" width="4" height="7" rx="2" className="fill-primary-400" />
+      </svg>
       <span className="truncate">Haggle</span>
     </Link>
   );
