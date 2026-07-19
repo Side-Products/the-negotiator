@@ -193,12 +193,25 @@ export default function ReportPage() {
     })
     .filter((s) => s.call);
 
-  // Vendors who did not quote: documented callbacks and declines are evidence
-  // too. Derived from calls, so this works for reports generated before it.
+  // The page shows EVERYTHING: ranking carries each vendor's best quote, and
+  // any other committed quotes from the same vendor (e.g. a superseded
+  // round-1 offer) render inside that vendor's evidence section.
+  const rankedQuoteIds = new Set(sections.map((s) => String(s.quote?._id)));
+  const otherQuotesFor = (vendorName) =>
+    quotes
+      .filter((q) => q.committed && !rankedQuoteIds.has(String(q._id)))
+      .map((q) => ({ quote: q, call: calls.find((c) => c._id === q.callId) }))
+      .filter((x) => x.call?.vendorName === vendorName);
+
+  // Every call not represented by a committed quote still shows its evidence:
+  // callbacks, declines, and failures, with transcript and recording if any.
   const nonQuoted = calls.filter(
     (c) =>
-      ["callback", "declined"].includes(c.outcome?.type) &&
-      !quotes.some((q) => q.callId === c._id && q.committed),
+      !quotes.some((q) => q.callId === c._id && q.committed) &&
+      (c.outcome?.type ||
+        c.status === "failed" ||
+        (c.transcript || []).length > 0 ||
+        c.recordingPath),
   );
 
   return (
@@ -293,10 +306,20 @@ export default function ReportPage() {
                   <span className="font-medium">{call.vendorName}</span>
                   <span
                     className={`badge ${
-                      call.outcome?.type === "callback" ? "badge-warning" : "badge-error"
+                      call.outcome?.type === "callback"
+                        ? "badge-warning"
+                        : call.outcome?.type === "declined"
+                          ? "badge-error"
+                          : "badge-info"
                     }`}
                   >
-                    {call.outcome?.type === "callback" ? "callback requested" : "declined"}
+                    {call.outcome?.type === "callback"
+                      ? "callback requested"
+                      : call.outcome?.type === "declined"
+                        ? "declined"
+                        : call.status === "failed"
+                          ? "call failed"
+                          : "no committed quote"}
                   </span>
                   {call.batch && (
                     <span className="text-xs text-muted-foreground">batch {call.batch}</span>
@@ -304,6 +327,14 @@ export default function ReportPage() {
                 </div>
                 {call.outcome?.note && (
                   <p className="mt-1 text-sm text-muted-foreground">{noEmDash(call.outcome.note)}</p>
+                )}
+                {call.recordingPath && (
+                  <audio
+                    controls
+                    preload="none"
+                    className="mt-2 h-9 w-full"
+                    src={`/api/calls/${call._id}/audio`}
+                  />
                 )}
                 {(call.transcript || []).length > 0 && (
                   <details className="mt-2">
@@ -390,6 +421,35 @@ export default function ReportPage() {
                     </p>
                     <TranscriptView transcript={call.transcript} highlightTurns={highlightTurns} callId={call._id} />
                   </div>
+
+                  {/* This vendor's OTHER committed quotes (e.g. the superseded
+                      round-1 offer): every quote stays on the record. */}
+                  {otherQuotesFor(call.vendorName).map(({ quote: oq, call: oc }) => (
+                    <div
+                      key={oq._id}
+                      id={`call-${oc._id}`}
+                      className="border-t border-border pt-4"
+                    >
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Earlier quote · round {oc.round} · {fmt(oq.total)}
+                        {oq.guaranteed ? " (guaranteed)" : ""} — superseded by the offer above
+                      </p>
+                      <QuoteBreakdown quote={oq} vertical={vertical} />
+                      <div className="mt-3">
+                        <CallAudio call={oc} />
+                      </div>
+                      {(oc.transcript || []).length > 0 && (
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                            Transcript ({oc.transcript.length} turns)
+                          </summary>
+                          <div className="mt-2">
+                            <TranscriptView transcript={oc.transcript} callId={oc._id} />
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

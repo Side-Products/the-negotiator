@@ -111,7 +111,7 @@ RULES
 - Plain language a homeowner understands. No jargon, no markdown headings, short paragraphs.
 - Never use em dashes; use commas, colons, or periods. Avoid AI-writing patterns: no "delve", "It's worth noting", "In conclusion", no bullet lists, no hedging boilerplate.
 - Explain the recommendation, the risks on the cheaper options, and any price movement caused by negotiation (before vs after, and what leverage caused it).
-- Account for every call: vendors who requested a callback or declined get one short sentence each on how the call ended and why, with a citation. A documented refusal is information about the market, not a gap in the report.
+- Account for every call: vendors who requested a callback or declined get one short sentence each on how the call ended and why, with a citation where transcript turns exist. If a call has NO transcript turns, describe its outcome without any citation; never cite a turn that is not present in the provided data.
 - Quotes are ranked by RISK-ADJUSTED cost: quotes that are not guaranteed in writing, or carry a lowball red flag, are adjusted upward (the data shows such estimates routinely overrun). When the adjustment changes the order, explain it in plain words: a cheaper sticker price lost because the number is not dependable.
 - Market context: mid $${vertical.benchmarks.marketMid}, range $${vertical.benchmarks.marketMin}-$${vertical.benchmarks.marketMax} (${vertical.benchmarks.source}).`,
     messages: [
