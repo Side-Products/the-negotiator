@@ -261,6 +261,10 @@ export default function JobMissionControl() {
               job={job}
               quote={quoteForCall(call)}
               leverageAmount={call.round === 2 ? leverageAmountFor(call) : undefined}
+              canNegotiate={
+                committedQuotes.length >= 2 &&
+                !calls.some((c) => c.round === 2 && c.vendorName === call.vendorName)
+              }
               onChanged={load}
             />
           ))}

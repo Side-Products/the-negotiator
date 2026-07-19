@@ -31,7 +31,21 @@ export default function CallCard(props) {
   );
 }
 
-function CallSession({ call, job, quote, onChanged, leverageAmount }) {
+function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate }) {
+  const [negotiating, setNegotiating] = useState(false);
+
+  const negotiateThisVendor = async () => {
+    setNegotiating(true);
+    try {
+      await api(`/api/jobs/${job._id}/negotiate`, "POST", { vendorName: call.vendorName });
+      toast.success(`Calling ${call.vendorName} back with leverage from the other conversations.`);
+      onChanged?.();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setNegotiating(false);
+    }
+  };
   const [mode, setMode] = useState(call.mode || "sim");
   const [turns, setTurns] = useState([]);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -361,6 +375,18 @@ function CallSession({ call, job, quote, onChanged, leverageAmount }) {
             {noEmDash(displayTurns[displayTurns.length - 1].text)}
           </span>
         </p>
+      )}
+
+      {/* Negotiate this vendor using everything learned from the other calls */}
+      {canNegotiate && displayStatus === "done" && quote?.committed && call.round === 1 && (
+        <button
+          onClick={negotiateThisVendor}
+          disabled={negotiating}
+          className="btn btn-secondary self-start text-xs disabled:opacity-50"
+          title="Call this vendor back, armed with the best bid and terms from the other conversations"
+        >
+          {negotiating ? "Setting up…" : "Negotiate with this vendor"}
+        </button>
       )}
 
       {/* Transcript */}

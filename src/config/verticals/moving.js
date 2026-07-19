@@ -97,7 +97,7 @@ const moving = {
 
   interview: {
     opener:
-      "Hey! I'm going to help you get real, comparable moving quotes. I'll ask a few quick questions about your move — takes about two minutes. First up: where are you moving from?",
+      "Hi, I'll get you real, comparable moving quotes. Takes about two minutes of questions, and you'll only have to say all this once. So, where are you moving from?",
     style:
       "Warm and conversational. Ask exactly one question at a time and wait for the answer. Never stack questions. If an answer is vague, ask one short follow-up. Keep it moving — no small talk beyond a friendly acknowledgment.",
     mustConfirm:

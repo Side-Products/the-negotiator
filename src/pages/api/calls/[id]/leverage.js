@@ -1,34 +1,23 @@
 import dbConnect from "@/lib/dbConnect";
 import Call from "@/backend/models/call";
-import Quote from "@/backend/models/quote";
+import { buildLeverage } from "@/backend/services/agentVars";
 
-// Same server-side filter as leverage_json in /api/agent/session: only committed
-// quotes explicitly pinned on the call. Round-1 calls have none, so the buyer
-// agent physically cannot cite a bid that doesn't exist. Never leak vendor names.
+// Same server-side builder as leverage_json in /api/agent/session: only
+// committed quotes explicitly pinned on the call, enriched with recorded
+// terms (guarantees, waived fees, in-call price movements). Round-1 calls
+// have none, so the buyer agent physically cannot cite a bid that doesn't
+// exist. Never leaks vendor names.
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
   try {
     await dbConnect();
-    const { id } = req.query;
-    const call = await Call.findById(id);
+    const call = await Call.findById(req.query.id);
     if (!call) {
       return res.status(404).json({ error: "Call not found" });
     }
-
-    const quotes = await Quote.find({
-      _id: { $in: call.leverageQuoteIds || [] },
-      committed: true,
-    });
-
-    const leverage = quotes.map((q) => ({
-      amount: q.total,
-      guaranteed: !!q.guaranteed,
-      itemised: (q.lines || []).map((l) => ({ label: l.label, amount: l.amount })),
-      descriptor: "another licensed provider",
-    }));
-
+    const leverage = await buildLeverage(call);
     return res.status(200).json({ leverage });
   } catch (error) {
     console.error("leverage error:", error);

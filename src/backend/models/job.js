@@ -22,6 +22,7 @@ const jobSchema = new mongoose.Schema(
           quoteId: { type: mongoose.Schema.Types.ObjectId, ref: "Quote" },
           rank: { type: Number },
           landedTotal: { type: Number },
+          riskAdjusted: { type: Number }, // expected cost after overrun adjustment
           riskNote: { type: String },
         },
       ],

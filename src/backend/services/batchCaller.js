@@ -9,6 +9,7 @@ import Call from "@/backend/models/call";
 import Job from "@/backend/models/job";
 import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
+import { buildLeverage } from "@/backend/services/agentVars";
 import { completeWithTools } from "@/backend/services/llm";
 import { renderCallAudio } from "@/backend/services/audioRenderer";
 import { nextVendorTurn } from "@/backend/services/vendorBrain";
@@ -92,6 +93,7 @@ FEE TAXONOMY: ${JSON.stringify(vertical.fees)}
 MARKET CONTEXT (your judgment only — never present as a competing bid): ${JSON.stringify(vertical.benchmarks)}
 NEGOTIATION LEVERS: ${JSON.stringify(vertical.levers)}
 COMPETING BIDS YOU MAY REFERENCE (your only leverage; may be empty): ${JSON.stringify(leverage)}
+Each bid may include recorded terms from that conversation: waivedFees (charges another provider waived), movedInCall (a price that dropped under pressure), guaranteed. You may cite ANY of these facts as leverage, for example "another provider waived the fuel surcharge" or "another provider came down two hundred when we discussed it". Never the company name, and never a fact not present in the data.
 ${priorQuote ? `THIS VENDOR'S OWN PRIOR QUOTE: $${priorQuote.total}${priorQuote.guaranteed ? " (guaranteed)" : ""} — this is a follow-up call. Open by referencing it, then use your leverage to push for a better number.` : ""}
 
 HONESTY RULES (non-negotiable):
@@ -116,8 +118,23 @@ HOW TO RUN THE CALL:
 - Never use em dashes; use a comma or a period. No AI-writing tells ("Certainly", "Absolutely", "Great question"), no lists in speech, vary your acknowledgments.`;
 };
 
-// One complete buyer<->vendor call, entirely server-side.
+// One complete buyer<->vendor call, entirely server-side. Guarded per call:
+// the auto-negotiation pass and the manual buttons can race to run the same
+// pending call, and a double run would interleave two conversations.
+const activeCalls = new Set();
+
 export const runCall = async (callId) => {
+	const key = callId.toString();
+	if (activeCalls.has(key)) return;
+	activeCalls.add(key);
+	try {
+		await runCallInner(callId);
+	} finally {
+		activeCalls.delete(key);
+	}
+};
+
+const runCallInner = async (callId) => {
 	const call = await Call.findById(callId);
 	if (!call || call.status === "done") return;
 	const job = await Job.findById(call.jobId);
@@ -126,14 +143,10 @@ export const runCall = async (callId) => {
 		vertical.vendorPolicyCards.find((c) => c.id === call.policyCardId) ||
 		vertical.vendorPolicyCards[0];
 
-	// Honesty guardrail: leverage only from committed quotes pinned to this call.
-	const quotes = await Quote.find({ _id: { $in: call.leverageQuoteIds || [] }, committed: true });
-	const leverage = quotes.map((q) => ({
-		amount: q.total,
-		guaranteed: !!q.guaranteed,
-		itemised: (q.lines || []).map((l) => ({ label: l.label, amount: l.amount })),
-		descriptor: "another licensed provider",
-	}));
+	// Honesty guardrail: leverage only from committed quotes pinned to this
+	// call, enriched with recorded terms from those conversations (guarantees,
+	// waived fees, in-call price movements).
+	const leverage = await buildLeverage(call);
 
 	// Round 2: the buyer calls back knowing this vendor's own round-1 number.
 	let priorQuote = null;
@@ -304,6 +317,84 @@ export const createBatchCalls = async (job, { total = 20, batchSize = 5, batchSi
 	return Call.create(docs);
 };
 
+// Deal brain, the winner circle: after round 1, squeeze the two best clean
+// offers against EACH OTHER. Creates round-2 calls (idempotent per vendor):
+//   1. runner-up, armed with the leader's bid (beat it and win)
+//   2. leader, armed with the runner-up's bid (sharpen price or lock terms)
+// With vendorName, targets that ONE vendor armed with the best OTHER clean
+// bid. Throws with a user-facing message when prerequisites are missing.
+// Creation only; the caller decides how to run the created calls.
+export const createWinnerCircleCalls = async (jobId, { vendorName } = {}) => {
+	const job = await Job.findById(jobId);
+	if (!job) throw new Error("Job not found");
+	const round1Calls = await Call.find({ jobId, round: 1 });
+	const callById = Object.fromEntries(round1Calls.map((c) => [c._id.toString(), c]));
+	const quotes = await Quote.find({ jobId, committed: true });
+	const clean = quotes
+		.filter((q) => !(q.redFlags || []).some((f) => f.id === "lowball"))
+		.sort((a, b) => a.total - b.total || (b.guaranteed === true) - (a.guaranteed === true));
+	if (clean.length < (vendorName ? 1 : 2)) {
+		throw new Error("Need at least two committed clean quotes to negotiate");
+	}
+
+	let targets;
+	if (vendorName) {
+		const targetQuote = quotes.find(
+			(q) => callById[q.callId?.toString()]?.vendorName === vendorName,
+		);
+		const bestOther = clean.find(
+			(q) => callById[q.callId?.toString()]?.vendorName !== vendorName,
+		);
+		if (!targetQuote || !bestOther) {
+			throw new Error(
+				"Need this vendor's committed quote plus one clean quote from another vendor",
+			);
+		}
+		targets = [{ quote: targetQuote, leverage: bestOther }];
+	} else {
+		targets = [
+			{ quote: clean[1], leverage: clean[0] },
+			{ quote: clean[0], leverage: clean[1] },
+		];
+	}
+
+	const created = [];
+	for (const t of targets) {
+		const sourceCall = callById[t.quote.callId?.toString()];
+		if (!sourceCall) continue;
+		const existing = await Call.findOne({
+			jobId,
+			round: 2,
+			vendorName: sourceCall.vendorName,
+		});
+		if (existing) {
+			created.push(existing);
+			continue;
+		}
+		created.push(
+			await Call.create({
+				jobId,
+				specVersion: job.specVersion,
+				vendorName: sourceCall.vendorName,
+				phone: sourceCall.phone,
+				placeId: sourceCall.placeId,
+				rating: sourceCall.rating,
+				policyCardId: sourceCall.policyCardId,
+				pricingJitter: sourceCall.pricingJitter,
+				round: 2,
+				mode: "sim",
+				status: "pending",
+				leverageQuoteIds: [t.leverage._id],
+			}),
+		);
+	}
+	if (created.some((c) => c.status === "pending")) {
+		job.status = "negotiating";
+		await job.save();
+	}
+	return created;
+};
+
 // Run all batches sequentially; within a batch, calls run concurrently.
 // Batch 2+ carries the best committed non-lowball quote so far as leverage.
 // Re-entrant and restart-safe: a second invocation while a run is active is a
@@ -349,6 +440,18 @@ export const runBatchesForJob = async (jobId) => {
 			if (failed.length) {
 				await Promise.allSettled(failed.map((c) => runCall(c._id)));
 			}
+		}
+
+		// The negotiation round fires automatically once the market is quoted:
+		// no button, it is simply the next step of the pipeline.
+		try {
+			const round2 = await createWinnerCircleCalls(jobId);
+			for (const c of round2.filter((x) => x.status === "pending")) {
+				await runCall(c._id);
+			}
+		} catch (e) {
+			// Fewer than two clean quotes: nothing to negotiate with, not an error.
+			console.log(`auto-negotiation skipped for ${jobId}: ${e.message}`);
 		}
 	} finally {
 		activeRuns.delete(key);

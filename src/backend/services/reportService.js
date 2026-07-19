@@ -3,6 +3,7 @@ import Call from "@/backend/models/call";
 import Quote from "@/backend/models/quote";
 import getVertical from "@/config/verticals";
 import { complete } from "@/backend/services/llm";
+import { riskAdjustedTotal } from "@/lib/utils";
 
 const hasFlag = (quote, flagId) => (quote.redFlags || []).some((f) => f.id === flagId);
 
@@ -16,20 +17,27 @@ export const generateReport = async (jobId) => {
 
   // A round-2 quote supersedes the same vendor's round-1 quote — rank only the live ones.
   const supersededIds = new Set(quotes.map((q) => q.supersedes?.toString()).filter(Boolean));
+  const riskMultiplier = vertical.benchmarks.riskMultiplier || 1.3;
+  // Deal brain: rank by risk-adjusted cost, not sticker price. An unguaranteed
+  // or red-flagged quote carries an expected overrun (see utils.riskAdjustedTotal).
   const active = quotes
     .filter((q) => !supersededIds.has(q._id.toString()))
-    .sort((a, b) => (a.total || 0) - (b.total || 0));
+    .sort(
+      (a, b) =>
+        riskAdjustedTotal(a, riskMultiplier) - riskAdjustedTotal(b, riskMultiplier) ||
+        (a.total || 0) - (b.total || 0),
+    );
 
   const ranking = active.map((q, i) => ({
     quoteId: q._id,
     rank: i + 1,
     landedTotal: q.total,
+    riskAdjusted: riskAdjustedTotal(q, riskMultiplier),
     riskNote: (q.redFlags || []).map((f) => f.message).join(" ") || "",
   }));
 
   const nonLowball = active.filter((q) => !hasFlag(q, "lowball"));
-  const recommended =
-    nonLowball.find((q) => q.guaranteed) || nonLowball[0] || active[0] || null;
+  const recommended = nonLowball[0] || active[0] || null;
 
   const callById = Object.fromEntries(calls.map((c) => [c._id.toString(), c]));
 
@@ -96,6 +104,7 @@ RULES
 - Never use em dashes; use commas, colons, or periods. Avoid AI-writing patterns: no "delve", "It's worth noting", "In conclusion", no bullet lists, no hedging boilerplate.
 - Explain the recommendation, the risks on the cheaper options, and any price movement caused by negotiation (before vs after, and what leverage caused it).
 - Account for every call: vendors who requested a callback or declined get one short sentence each on how the call ended and why, with a citation. A documented refusal is information about the market, not a gap in the report.
+- Quotes are ranked by RISK-ADJUSTED cost: quotes that are not guaranteed in writing, or carry a lowball red flag, are adjusted upward (the data shows such estimates routinely overrun). When the adjustment changes the order, explain it in plain words: a cheaper sticker price lost because the number is not dependable.
 - Market context: mid $${vertical.benchmarks.marketMid}, range $${vertical.benchmarks.marketMin}-$${vertical.benchmarks.marketMax} (${vertical.benchmarks.source}).`,
     messages: [
       {

@@ -1,9 +1,10 @@
 import RedFlagBadge from "@/components/report/RedFlagBadge";
+import { riskAdjustedTotal } from "@/lib/utils";
 
 const fmt = (n) =>
   typeof n === "number"
     ? n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-    : "—";
+    : "–";
 
 export default function RankingTable({ ranking, quotes, calls, recommendedQuoteId, onSelect }) {
   const rows = [...(ranking || [])]
@@ -21,7 +22,13 @@ export default function RankingTable({ ranking, quotes, calls, recommendedQuoteI
           <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
             <th className="py-2.5 pr-4 font-medium">Rank</th>
             <th className="py-2.5 pr-4 font-medium">Vendor</th>
-            <th className="py-2.5 pr-4 text-right font-medium">Landed total</th>
+            <th className="py-2.5 pr-4 text-right font-medium">Quoted</th>
+            <th
+              className="py-2.5 pr-4 text-right font-medium"
+              title="Expected cost: quotes that are not guaranteed in writing, or red-flagged as lowballs, are adjusted upward for the documented overrun pattern"
+            >
+              Expected cost
+            </th>
             <th className="py-2.5 pr-4 font-medium">Guaranteed</th>
             <th className="py-2.5 pr-4 font-medium">Fees</th>
             <th className="py-2.5 font-medium">Red flags</th>
@@ -57,8 +64,20 @@ export default function RankingTable({ ranking, quotes, calls, recommendedQuoteI
                     <div className="mt-0.5 text-xs text-muted-foreground">{row.riskNote}</div>
                   )}
                 </td>
-                <td className="py-3 pr-4 text-right font-semibold tabular-nums">
+                <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">
                   {fmt(row.landedTotal ?? row.quote?.total)}
+                </td>
+                <td className="py-3 pr-4 text-right font-semibold tabular-nums">
+                  {fmt(row.riskAdjusted ?? (row.quote ? riskAdjustedTotal(row.quote) : undefined))}
+                  {row.quote &&
+                    (row.riskAdjusted ?? riskAdjustedTotal(row.quote)) > row.quote.total && (
+                      <span
+                        className="ml-1 text-xs font-normal text-warning-600 dark:text-warning-400"
+                        title="Adjusted upward: not dependable at face value"
+                      >
+                        ▲
+                      </span>
+                    )}
                 </td>
                 <td className="py-3 pr-4">
                   <span className={`badge ${row.quote?.guaranteed ? "badge-success" : "badge-warning"}`}>

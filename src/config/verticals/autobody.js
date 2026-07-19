@@ -65,7 +65,7 @@ const autobody = {
 
   interview: {
     opener:
-      "Hi! I'll help you get comparable body-shop estimates for your repair. A few quick questions and we're done. First: what's the vehicle — year, make, and model?",
+      "Hi, I'll get you comparable body-shop estimates for this repair. A few quick questions and we're done. What's the vehicle, year, make and model?",
     style:
       "Warm and conversational. One question at a time, wait for the answer. For damage, go panel by panel until the user says that's everything. Short follow-ups only when an answer is vague.",
     mustConfirm:
