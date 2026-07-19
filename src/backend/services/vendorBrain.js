@@ -5,7 +5,9 @@ const REVEAL_RULES = {
   asked_directly: "reveal it ONLY if the caller asks directly about that specific charge",
 };
 
-const renderSystemPrompt = ({ card, vertical, job, vendorName, jitter = 1 }) => {
+// Exported for counter-agent sessions: the same persona prompt drives the
+// vendor-side ElevenLabs agent, so sim and counter vendors behave identically.
+export const renderVendorSystemPrompt = ({ card, vertical, job, vendorName, jitter = 1 }) => {
   // Per-vendor price scale so a 20-vendor market doesn't quote 3 identical numbers.
   const scale = (v) => Math.round((v * jitter) / 10) * 10;
   const pricing = {
@@ -63,7 +65,7 @@ export const nextVendorTurn = async ({ call, job, vertical, card, lastAgentText 
 
   const text =
     (await complete({
-      system: renderSystemPrompt({
+      system: renderVendorSystemPrompt({
         card,
         vertical,
         job,

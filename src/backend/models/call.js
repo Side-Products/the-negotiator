@@ -7,7 +7,8 @@ const callSchema = new mongoose.Schema(
     vendorName: { type: String },
     policyCardId: { type: String },
     round: { type: Number, enum: [1, 2], default: 1 },
-    mode: { type: String, enum: ["sim", "roleplay", "real"], default: "sim" },
+    // counter: agent-vs-agent with a real ElevenLabs vendor agent on the other side
+    mode: { type: String, enum: ["sim", "roleplay", "real", "counter"], default: "sim" },
     phone: { type: String }, // real calls: the business number dialed
     isTest: { type: Boolean, default: false }, // test dial to the user's own phone
     placeId: { type: String }, // Google Places id of the business (links out)

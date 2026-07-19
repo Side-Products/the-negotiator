@@ -101,6 +101,14 @@ export default function JobMissionControl() {
     : null;
   const flaggedCount = committedQuotes.filter((q) => (q.redFlags || []).length > 0).length;
 
+  // Manually added calls (role-play, sim, counter) go on top, newest first,
+  // so clicking an add-call button puts its card at the top of the grid.
+  // Server-driven batch calls keep their original order below.
+  const displayCalls = [
+    ...calls.filter((c) => !c.batch).reverse(),
+    ...calls.filter((c) => c.batch),
+  ];
+
   const quoteForCall = (call) =>
     quotes.find((q) => q.callId === call._id && q.committed) ||
     quotes.find((q) => q.callId === call._id);
@@ -143,6 +151,12 @@ export default function JobMissionControl() {
   });
   const addRolePlay = run("roleplay", () => api(`/api/jobs/${id}/calls`, "POST", { mode: "roleplay" }));
   const addLiveSim = run("livesim", () => api(`/api/jobs/${id}/calls`, "POST", { mode: "sim" }));
+  const addCounterCalls = run("counter", async () => {
+    const data = await api(`/api/jobs/${id}/calls`, "POST", { mode: "counter", count: 10 });
+    toast.success(
+      `Added ${data.calls.length} counter-agent calls. Start each card to hear the two agents negotiate.`,
+    );
+  });
   const negotiate = run("negotiate", () => api(`/api/jobs/${id}/negotiate`, "POST", {}));
   const generateReport = run("report", async () => {
     await api(`/api/jobs/${id}/report`, "POST", {});
@@ -178,6 +192,14 @@ export default function JobMissionControl() {
           title="Buyer agent negotiates out loud with an AI vendor persona in its own voice"
         >
           {busy === "livesim" ? "Adding…" : "+ Live agent-vs-agent call"}
+        </CutButton>
+        <CutButton
+          variant="outline"
+          onClick={addCounterCalls}
+          disabled={!job.confirmed || busy === "counter"}
+          title="Ten calls where a real ElevenLabs vendor agent role-plays the other side, both agents live"
+        >
+          {busy === "counter" ? "Adding…" : "+ 10 counter-agent calls"}
         </CutButton>
         <CutButton
           variant="outline"
@@ -243,7 +265,7 @@ export default function JobMissionControl() {
 
       {calls.length > 0 && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {calls.map((call) => (
+          {displayCalls.map((call) => (
             <CallCard
               key={call._id}
               call={call}

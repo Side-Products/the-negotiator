@@ -169,6 +169,40 @@ FRICTION HANDLING:
 STYLE:
 - Never use em dashes; use a comma or a period instead. Avoid AI-writing tells: no "Certainly", "Absolutely", "I understand", "Great question", no restating what the vendor just said, no lists or headings in speech, and vary your acknowledgments.`;
 
+// Counter-agent for agent-vs-agent calls: a real ElevenLabs agent that
+// role-plays the vendor. The entire persona (policy card, pricing playbook,
+// quirks) is rendered server-side by vendorBrain.renderVendorSystemPrompt and
+// injected as one dynamic variable, so this agent stays generic across
+// verticals and personas. Empty first_message: the vendor waits for the buyer
+// agent to speak first, which gives clean turn-taking between the two
+// sessions. Voice comes per-call from the policy card via a tts override.
+const vendorAgent = {
+  name: "Haggle — Vendor (counter-agent)",
+  conversation_config: {
+    tts: {
+      voice_id: "TxGEqnHWrfWFTfGW9XjX",
+      model_id: "eleven_turbo_v2",
+      stability: 0.4,
+      similarity_boost: 0.85,
+    },
+    agent: {
+      first_message: "",
+      prompt: {
+        prompt: "{{vendor_system_prompt}}",
+        llm: "claude-sonnet-4-6",
+        tools: [{ type: "system", name: "end_call" }],
+      },
+    },
+  },
+  platform_settings: {
+    overrides: {
+      conversation_config_override: {
+        tts: { voice_id: true },
+      },
+    },
+  },
+};
+
 const intakeAgent = {
   name: "Haggle — Intake",
   conversation_config: {
@@ -385,23 +419,35 @@ async function main() {
   // In CI this script must only UPDATE the two known agents. Creating agents
   // there would silently mint a new agent on every push if an ID secret is
   // missing, and nobody would see the printed IDs.
-  if (process.env.CI && !(process.env.ELEVENLABS_INTAKE_AGENT_ID && process.env.ELEVENLABS_BUYER_AGENT_ID)) {
-    console.error("CI run refused: ELEVENLABS_INTAKE_AGENT_ID and ELEVENLABS_BUYER_AGENT_ID must both be set as secrets.");
+  if (
+    process.env.CI &&
+    !(
+      process.env.ELEVENLABS_INTAKE_AGENT_ID &&
+      process.env.ELEVENLABS_BUYER_AGENT_ID &&
+      process.env.ELEVENLABS_VENDOR_AGENT_ID
+    )
+  ) {
+    console.error(
+      "CI run refused: ELEVENLABS_INTAKE_AGENT_ID, ELEVENLABS_BUYER_AGENT_ID and ELEVENLABS_VENDOR_AGENT_ID must all be set as secrets.",
+    );
     process.exit(1);
   }
   const intake = await upsertAgent(process.env.ELEVENLABS_INTAKE_AGENT_ID, intakeAgent);
   console.log(`${intake.action} intake agent: ${intake.id}`);
   const buyer = await upsertAgent(process.env.ELEVENLABS_BUYER_AGENT_ID, buildBuyerAgent());
   console.log(`${buyer.action} buyer agent:  ${buyer.id}`);
+  const vendor = await upsertAgent(process.env.ELEVENLABS_VENDOR_AGENT_ID, vendorAgent);
+  console.log(`${vendor.action} vendor agent: ${vendor.id}`);
   console.log(
     publicUrl()
       ? `Buyer tools: WEBHOOK mode -> ${publicUrl()}`
       : "Buyer tools: CLIENT mode (browser sessions only; set PUBLIC_URL + re-run for real phone calls)",
   );
-  if (intake.action === "Created" || buyer.action === "Created") {
+  if (intake.action === "Created" || buyer.action === "Created" || vendor.action === "Created") {
     console.log("\nAdd to .env.local:\n");
     console.log(`ELEVENLABS_INTAKE_AGENT_ID=${intake.id}`);
     console.log(`ELEVENLABS_BUYER_AGENT_ID=${buyer.id}`);
+    console.log(`ELEVENLABS_VENDOR_AGENT_ID=${vendor.id}`);
   }
 }
 

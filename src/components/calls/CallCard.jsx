@@ -1,7 +1,9 @@
 // One vendor call: buyer-agent voice session + live quote build-up.
 // Sim mode: mic muted, vendor turns come from /vendor-turn (Anthropic + TTS)
 // and are injected back via sendUserMessage. Role-play mode: mic on, the human
-// answers as the vendor.
+// answers as the vendor. Counter mode: a second ElevenLabs session runs the
+// vendor agent; each side's utterances are relayed into the other session as
+// text, and both speak audibly in their own agent voices.
 
 import { useEffect, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
@@ -31,6 +33,76 @@ export default function CallCard(props) {
   );
 }
 
+// Vendor half of a counter call: its own ElevenLabs session (own provider),
+// mic muted, no tools. It registers start/say/end controls on a ref so the
+// buyer session drives it. Renders nothing; the voice is the UI.
+function VendorCounterpart({ jobId, callId, controlsRef, onVendorText, onVendorDown }) {
+  return (
+    <ConversationProvider>
+      <VendorCounterpartInner
+        jobId={jobId}
+        callId={callId}
+        controlsRef={controlsRef}
+        onVendorText={onVendorText}
+        onVendorDown={onVendorDown}
+      />
+    </ConversationProvider>
+  );
+}
+
+function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVendorDown }) {
+  const { startSession, endSession, sendUserMessage } = useConversation({ micMuted: true });
+  const upRef = useRef(false);
+
+  useEffect(() => {
+    controlsRef.current = {
+      start: async () => {
+        const { signedUrl, dynamicVariables, voiceId } = await api("/api/agent/session", "POST", {
+          role: "vendor",
+          jobId,
+          callId,
+        });
+        await new Promise((resolve, reject) => {
+          startSession({
+            signedUrl,
+            dynamicVariables,
+            connectionType: "websocket",
+            // Each persona speaks with its policy card's voice.
+            ...(voiceId && { overrides: { tts: { voiceId } } }),
+            onConnect: () => {
+              upRef.current = true;
+              resolve();
+            },
+            onMessage: ({ message, role }) => {
+              if (role === "agent") onVendorText(message);
+            },
+            onError: (message) => {
+              if (!upRef.current) reject(new Error(String(message)));
+            },
+            onDisconnect: () => {
+              if (upRef.current) {
+                upRef.current = false;
+                onVendorDown();
+              }
+            },
+          });
+        });
+      },
+      say: (text) => sendUserMessage(text),
+      end: () => {
+        upRef.current = false;
+        endSession();
+      },
+    };
+    return () => {
+      controlsRef.current = null;
+    };
+  }, [jobId, callId, controlsRef, onVendorText, onVendorDown, startSession, endSession, sendUserMessage]);
+
+  useEffect(() => () => endSession(), [endSession]);
+  return null;
+}
+
 function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate }) {
   const [negotiating, setNegotiating] = useState(false);
 
@@ -56,9 +128,12 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   const startedRef = useRef(false);
   const connectedRef = useRef(false);
 
+  const vendorControls = useRef(null);
+
   const { status, startSession, endSession, sendUserMessage, sendContextualUpdate } =
     useConversation({
-      micMuted: mode === "sim",
+      // Everything except role-play runs without the human mic.
+      micMuted: mode !== "roleplay",
     });
   const connected = status === "connected" || status === "connecting";
 
@@ -203,6 +278,7 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   };
 
   const finish = async () => {
+    vendorControls.current?.end();
     if (!startedRef.current) return;
     startedRef.current = false;
     setStarting(false);
@@ -220,12 +296,16 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   const start = async () => {
     setStarting(true);
     try {
+      // Counter mode: bring the vendor agent up first. It has no first
+      // message, so it waits silently until the buyer's opener is relayed in.
+      if (mode === "counter") await vendorControls.current.start();
       const { signedUrl, dynamicVariables } = await api("/api/agent/session", "POST", {
         role: "buyer",
         jobId: job._id,
         callId: call._id,
       });
       const sim = mode === "sim";
+      const counter = mode === "counter";
       turnsRef.current = [];
       pendingRef.current = "";
       setTurns([]);
@@ -254,7 +334,8 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
           if (role === "agent") {
             pushTurn("buyer", message);
             if (sim) vendorTurn(message);
-          } else if (!sim) {
+            if (counter) vendorControls.current?.say(message);
+          } else if (!sim && !counter) {
             pushTurn("vendor", message);
           }
         },
@@ -354,6 +435,11 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
             <span className="badge badge-info">auto (batch {call.batch})</span>
             {displayStatus === "pending" && <span>waiting for its batch…</span>}
           </>
+        ) : mode === "counter" ? (
+          <>
+            <span className="badge bg-foreground text-background">counter-agent</span>
+            {connected && <span>two live agent sessions, relayed turn by turn</span>}
+          </>
         ) : (
           <>
             <span className="badge bg-foreground text-background">agent vs agent</span>
@@ -361,6 +447,20 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
           </>
         )}
       </div>
+
+      {/* Counter mode mounts the vendor agent session alongside the buyer. */}
+      {mode === "counter" && (
+        <VendorCounterpart
+          jobId={job._id}
+          callId={call._id}
+          controlsRef={vendorControls}
+          onVendorText={(text) => {
+            pushTurn("vendor", text);
+            sendUserMessage(text);
+          }}
+          onVendorDown={() => endSession()}
+        />
+      )}
 
       {/* Running quote */}
       <div className="border-t border-border pt-3">
@@ -433,7 +533,7 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
       {/* Browser-started calls: role-play (human vendor via mic) and live sim
           (agent vs agent, audible). Batch sim and real calls are server-driven
           and have no start button. */}
-      {(mode === "roleplay" || (mode === "sim" && !call.batch)) && (
+      {(mode === "roleplay" || mode === "counter" || (mode === "sim" && !call.batch)) && (
         <div className="mt-auto flex gap-2 border-t border-border pt-3">
           {connected ? (
             <button onClick={() => endSession()} className="btn bg-error-500 text-white hover:bg-error-600">
@@ -447,7 +547,9 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
                   ? "Retry call"
                   : mode === "roleplay"
                     ? "Answer as vendor"
-                    : "Run agent vs agent"}
+                    : mode === "counter"
+                      ? "Run counter-agents"
+                      : "Run agent vs agent"}
             </button>
           )}
         </div>

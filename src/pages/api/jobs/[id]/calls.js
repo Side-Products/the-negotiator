@@ -21,28 +21,44 @@ export default async function handler(req, res) {
 		const vertical = getVertical(job.vertical);
 		if (!vertical) return res.status(400).json({ error: "Unknown vertical" });
 
-		const mode = (req.body || {}).mode === "sim" ? "sim" : "roleplay";
-		const count = await Call.countDocuments({ jobId: job._id, mode, batch: { $exists: false } });
-		// Live sim calls rotate through the policy cards so repeated demos show
-		// distinct negotiation styles.
-		const card = vertical.vendorPolicyCards[count % vertical.vendorPolicyCards.length];
-		const call = await Call.create({
-			jobId: job._id,
-			specVersion: job.specVersion,
-			vendorName:
-				(req.body || {}).vendorName ||
-				(mode === "sim" ? card.businessName : `Role-play vendor ${count + 1}`),
-			policyCardId: card.id,
-			round: 1,
-			mode,
-			status: "pending",
-		});
+		const body = req.body || {};
+		const mode = ["sim", "counter"].includes(body.mode) ? body.mode : "roleplay";
+		// counter mode may create a batch of cards in one click (capped at 10);
+		// sim and roleplay stay single.
+		const howMany = mode === "counter" ? Math.min(Math.max(Number(body.count) || 1, 1), 10) : 1;
+		const existing = await Call.countDocuments({ jobId: job._id, mode, batch: { $exists: false } });
+		const cards = vertical.vendorPolicyCards;
+
+		const created = [];
+		for (let i = 0; i < howMany; i++) {
+			const n = existing + i;
+			// Rotate through the policy cards so repeated calls show distinct
+			// negotiation styles. Suffix repeat visits so vendorName stays unique:
+			// leverage building and round-2 targeting key off vendorName.
+			const card = cards[n % cards.length];
+			const visit = Math.floor(n / cards.length);
+			const baseName = mode === "roleplay" ? `Role-play vendor ${n + 1}` : card.businessName;
+			created.push(
+				await Call.create({
+					jobId: job._id,
+					specVersion: job.specVersion,
+					vendorName:
+						(howMany === 1 && body.vendorName) ||
+						(visit > 0 ? `${baseName} #${visit + 1}` : baseName),
+					policyCardId: card.id,
+					round: 1,
+					mode,
+					pricingJitter: 0.9 + Math.random() * 0.25,
+					status: "pending",
+				}),
+			);
+		}
 
 		if (job.status === "confirmed") {
 			job.status = "calling";
 			await job.save();
 		}
-		return res.status(200).json({ call, calls: [call] });
+		return res.status(200).json({ call: created[0], calls: created });
 	} catch (error) {
 		console.error("jobs/calls error:", error);
 		return res.status(500).json({ error: error.message });

@@ -50,20 +50,25 @@ async function main() {
 		`${committed.length} committed, thin: ${thin.map((q) => `$${q.total}`).join(", ") || "none"}`,
 	);
 
-	// 4. The 30%-below-market red flag fires exactly when it should.
-	const verticalRes = await fetch(`${BASE}/api/jobs/${jobId}`);
-	void verticalRes; // benchmarks come from config; recompute from the report page's source
-	const configs = { moving: 1900, autobody: 1650 };
-	const mid = configs[job.vertical];
+	// 4. The lowball red flag fires exactly when the vertical's config says it
+	// should (threshold and benchmarks read from the config itself).
+	const { pathToFileURL } = require("url");
+	const path = require("path");
+	const configUrl = pathToFileURL(
+		path.join(__dirname, "..", "config", "verticals", `${job.vertical}.js`),
+	).href;
+	const vertical = (await import(configUrl)).default;
+	const mid = vertical?.benchmarks?.marketMid;
+	const thresholdPct = vertical?.redFlags?.find((r) => r.id === "lowball")?.thresholdPct ?? 30;
 	const misflagged = mid
 		? committed.filter((q) => {
-				const shouldFlag = q.total < mid * 0.7;
+				const shouldFlag = q.total < mid * (1 - thresholdPct / 100);
 				const flagged = (q.redFlags || []).some((f) => f.id === "lowball");
 				return shouldFlag !== flagged;
 			})
 		: [];
 	check(
-		"lowball red flag fires iff total < 70% of market mid",
+		`lowball red flag fires iff total < ${100 - thresholdPct}% of market mid`,
 		mid !== undefined && misflagged.length === 0,
 		misflagged.length ? `wrong on: ${misflagged.map((q) => `$${q.total}`).join(", ")}` : "consistent",
 	);
