@@ -8,6 +8,8 @@ const jobSchema = new mongoose.Schema(
     spec: { type: mongoose.Schema.Types.Mixed, default: {} },
     specVersion: { type: Number, default: 1 },
     specSource: { type: String, enum: ["voice", "doc", "both"] },
+    // Which channel created the job (chat bots stamp themselves; web is default).
+    source: { type: String, enum: ["web", "whatsapp", "telegram"], default: "web" },
     confirmed: { type: Boolean, default: false },
     confirmedAt: { type: Date },
     status: {

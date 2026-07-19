@@ -218,7 +218,11 @@ export const processChatIntake = async (session, text, { channel }) => {
 	if (session.stage === "pick_vertical") {
 		const vertical = pickVertical(text);
 		if (!vertical) return { text: verticalMenu() };
-		const job = await Job.create({ vertical: vertical.id, spec: {} });
+		const job = await Job.create({
+			vertical: vertical.id,
+			spec: {},
+			source: String(channel || "web").toLowerCase(),
+		});
 		session.vertical = vertical.id;
 		session.jobId = job._id;
 		session.stage = "intake";

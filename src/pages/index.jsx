@@ -9,6 +9,14 @@ import { Logo } from "@/components/Logo";
 import { CutButton } from "@/components/ui/CutButton";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import {
+  TelegramIcon,
+  WhatsAppIcon,
+  TELEGRAM_BOT_USERNAME,
+  WHATSAPP_JOIN_CODE,
+  telegramHref,
+  whatsappJoinHref,
+} from "@/components/ui/ChannelIcons";
+import {
   ArrowRight,
   Bug,
   Car,
@@ -473,6 +481,104 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Chat channels: the interview also runs in WhatsApp / Telegram */}
+        <section id="chat" className="scroll-mt-20 border-t border-border py-20 sm:py-28">
+          <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
+            <Reveal>
+              <SectionHeading
+                kicker="No laptop needed"
+                title="Locked out with just your phone? Text us."
+                sub="The same interview runs in chat. Message the bot from the doorstep, answer a few questions, and the calls start while you wait."
+              />
+            </Reveal>
+
+            <div className="mx-auto mt-12 grid max-w-4xl gap-6 sm:grid-cols-2">
+              {WHATSAPP_JOIN_CODE && (
+                <Reveal delay={80} className="h-full">
+                  <div className="cut-corners-lg h-full bg-border p-px">
+                    <div className="cut-corners-lg flex h-full flex-col bg-card p-6 sm:p-7">
+                      <div className="flex items-center justify-between">
+                        <span className="flex h-10 w-10 items-center justify-center bg-[#25D366]/10 text-[#25D366]">
+                          <WhatsAppIcon className="h-5 w-5" />
+                        </span>
+                        <span className="badge badge-info">free sandbox</span>
+                      </div>
+                      <h3 className="mt-5 font-jakarta text-lg font-bold">WhatsApp</h3>
+                      <ol className="mt-3 space-y-2.5 text-sm leading-relaxed text-muted-foreground">
+                        <li className="flex gap-3">
+                          <span className="font-mono text-xs text-primary-500">01</span>
+                          <span>
+                            Unlock the bot once. The button opens WhatsApp with the join message
+                            pre-filled, just hit send.
+                          </span>
+                        </li>
+                        <li className="flex gap-3">
+                          <span className="font-mono text-xs text-primary-500">02</span>
+                          <span>Say hi, pick Locksmith, and answer the interview.</span>
+                        </li>
+                        <li className="flex gap-3">
+                          <span className="font-mono text-xs text-primary-500">03</span>
+                          <span>Every quote and the final report land on your job page.</span>
+                        </li>
+                      </ol>
+                      <p className="mt-4 text-xs text-muted-foreground">
+                        Runs on Twilio's free sandbox: access lasts 72 hours, rejoin anytime with
+                        the same message.
+                      </p>
+                      <div className="mt-5">
+                        <CutButton
+                          href={whatsappJoinHref()}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full sm:w-auto"
+                        >
+                          <WhatsAppIcon className="h-4 w-4" />
+                          Open WhatsApp
+                        </CutButton>
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+              )}
+
+              {TELEGRAM_BOT_USERNAME && (
+                <Reveal delay={160} className="h-full">
+                  <div className="cut-corners-lg h-full bg-border p-px">
+                    <div className="cut-corners-lg flex h-full flex-col bg-card p-6 sm:p-7">
+                      <div className="flex items-center justify-between">
+                        <span className="flex h-10 w-10 items-center justify-center bg-[#26A5E4]/10 text-[#26A5E4]">
+                          <TelegramIcon className="h-5 w-5" />
+                        </span>
+                        <span className="badge badge-success">no signup</span>
+                      </div>
+                      <h3 className="mt-5 font-jakarta text-lg font-bold">Telegram</h3>
+                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                        One tap, hit start, done. The bot interviews you right in the chat, and you
+                        can send photos of the lock or door mid-conversation. It answers in your
+                        language.
+                      </p>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        Same engine, same evidence-backed calls, same report.
+                      </p>
+                      <div className="mt-auto pt-5">
+                        <CutButton
+                          href={telegramHref()}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full sm:w-auto"
+                        >
+                          <TelegramIcon className="h-4 w-4" />
+                          Open @{TELEGRAM_BOT_USERNAME}
+                        </CutButton>
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+              )}
+            </div>
+          </div>
+        </section>
+
         {/* Before / after comparison */}
         <section id="compare" className="scroll-mt-20 border-t border-border py-20 sm:py-28">
           <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-10">
@@ -485,14 +591,14 @@ export default function Home() {
 
             <div className="mx-auto mt-14 grid max-w-5xl gap-6 lg:grid-cols-2">
               {/* Old way */}
-              <Reveal>
-                <article className="overflow-hidden rounded-2xl border border-border bg-muted/20">
+              <Reveal className="h-full">
+                <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-muted/20">
                   <div className="border-b border-border bg-foreground px-6 py-5">
                     <p className="font-jakarta text-lg font-semibold text-background">
                       Calling around yourself
                     </p>
                   </div>
-                  <div className="relative aspect-[16/10] border-b border-border">
+                  <div className="relative flex flex-1 items-center justify-center border-b border-border py-10">
                     <NotepadMock />
                   </div>
                   <ul className="px-6 py-2">
@@ -512,14 +618,16 @@ export default function Home() {
               </Reveal>
 
               {/* With Haggle */}
-              <Reveal delay={120}>
-                <article className="overflow-hidden rounded-2xl border border-primary-400/40 bg-primary-400/[0.04]">
+              <Reveal delay={120} className="h-full">
+                <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-primary-400/40 bg-primary-400/[0.04]">
                   <div className="flex items-center justify-between bg-primary-400 px-6 py-5">
                     <p className="font-jakarta text-lg font-semibold text-white">With Haggle</p>
                     <Scale className="h-5 w-5 text-white" />
                   </div>
-                  <div className="relative aspect-[16/10] border-b border-primary-400/20 bg-primary-400/[0.03] p-5">
-                    <QuotesMock />
+                  <div className="relative flex flex-1 items-center border-b border-primary-400/20 bg-primary-400/[0.03] p-5">
+                    <div className="w-full">
+                      <QuotesMock />
+                    </div>
                   </div>
                   <ul className="px-6 py-2">
                     {NEW_WAY.map((t) => (

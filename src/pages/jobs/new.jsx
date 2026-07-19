@@ -11,6 +11,14 @@ import { VERTICALS, getVertical } from "@/config/verticals";
 import VoiceInterviewPanel from "@/components/intake/VoiceInterviewPanel";
 import DocUpload from "@/components/intake/DocUpload";
 import SpecPreview from "@/components/intake/SpecPreview";
+import {
+  TelegramIcon,
+  WhatsAppIcon,
+  TELEGRAM_BOT_USERNAME,
+  WHATSAPP_JOIN_CODE,
+  telegramHref,
+  whatsappJoinHref,
+} from "@/components/ui/ChannelIcons";
 
 const VERTICAL_ICONS = { moving: Truck, autobody: Car, locksmith: KeyRound, pestcontrol: Bug };
 
@@ -217,6 +225,36 @@ export default function NewJob() {
                 );
               })}
             </div>
+
+            {/* Chat entry points: same interview, from the phone */}
+            {(WHATSAPP_JOIN_CODE || TELEGRAM_BOT_USERNAME) && (
+              <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-5 text-sm text-muted-foreground">
+                <span>Prefer chat? The same interview runs on</span>
+                {WHATSAPP_JOIN_CODE && (
+                  <a
+                    href={whatsappJoinHref()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 font-medium text-foreground transition-colors hover:text-[#25D366]"
+                  >
+                    <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+                    WhatsApp
+                  </a>
+                )}
+                {WHATSAPP_JOIN_CODE && TELEGRAM_BOT_USERNAME && <span>and</span>}
+                {TELEGRAM_BOT_USERNAME && (
+                  <a
+                    href={telegramHref()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 font-medium text-foreground transition-colors hover:text-[#26A5E4]"
+                  >
+                    <TelegramIcon className="h-4 w-4 text-[#26A5E4]" />
+                    Telegram
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="pt-6">
