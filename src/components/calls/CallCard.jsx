@@ -36,7 +36,7 @@ export default function CallCard(props) {
 // Vendor half of a counter call: its own ElevenLabs session (own provider),
 // mic muted, no tools. It registers start/say/end controls on a ref so the
 // buyer session drives it. Renders nothing; the voice is the UI.
-function VendorCounterpart({ jobId, callId, controlsRef, onVendorText, onVendorDown }) {
+function VendorCounterpart({ jobId, callId, controlsRef, onVendorText, onVendorMode, onVendorDown }) {
   return (
     <ConversationProvider>
       <VendorCounterpartInner
@@ -44,13 +44,14 @@ function VendorCounterpart({ jobId, callId, controlsRef, onVendorText, onVendorD
         callId={callId}
         controlsRef={controlsRef}
         onVendorText={onVendorText}
+        onVendorMode={onVendorMode}
         onVendorDown={onVendorDown}
       />
     </ConversationProvider>
   );
 }
 
-function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVendorDown }) {
+function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVendorMode, onVendorDown }) {
   const { startSession, endSession, sendUserMessage } = useConversation({ micMuted: true });
   const upRef = useRef(false);
 
@@ -76,6 +77,9 @@ function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVe
             onMessage: ({ message, role }) => {
               if (role === "agent") onVendorText(message);
             },
+            onModeChange: ({ mode }) => {
+              onVendorMode?.(mode === "speaking");
+            },
             onError: (message) => {
               if (!upRef.current) reject(new Error(String(message)));
             },
@@ -97,7 +101,7 @@ function VendorCounterpartInner({ jobId, callId, controlsRef, onVendorText, onVe
     return () => {
       controlsRef.current = null;
     };
-  }, [jobId, callId, controlsRef, onVendorText, onVendorDown, startSession, endSession, sendUserMessage]);
+  }, [jobId, callId, controlsRef, onVendorText, onVendorMode, onVendorDown, startSession, endSession, sendUserMessage]);
 
   useEffect(() => () => endSession(), [endSession]);
   return null;
@@ -129,6 +133,18 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
   const connectedRef = useRef(false);
 
   const vendorControls = useRef(null);
+
+  // Counter-mode turn-taking: transcript events fire when a turn is GENERATED,
+  // while its audio is still playing. Relaying immediately makes the two
+  // agents talk over each other. So relayed text is queued and only delivered
+  // when BOTH sessions are audibly quiet (tracked via onModeChange) plus a
+  // short natural gap.
+  const buyerSpeakingRef = useRef(false);
+  const vendorSpeakingRef = useRef(false);
+  const toVendorRef = useRef("");
+  const toBuyerRef = useRef("");
+  const relayInFlightRef = useRef(false);
+  const lastQuietAtRef = useRef(0);
 
   const { status, startSession, endSession, sendUserMessage, sendContextualUpdate } =
     useConversation({
@@ -164,6 +180,37 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
     const t = setInterval(tick, 5000);
     return () => clearInterval(t);
   }, [status, call._id, sendContextualUpdate]);
+
+  // Counter-mode relay pump: every 250ms, if nobody has spoken for a beat,
+  // deliver exactly one queued utterance to the other agent. Buyer-to-vendor
+  // first (the buyer leads the call). This is what keeps the two voices from
+  // talking over each other.
+  useEffect(() => {
+    if (mode !== "counter" || status !== "connected") return;
+    lastQuietAtRef.current = Date.now();
+    const pump = setInterval(() => {
+      if (relayInFlightRef.current) return;
+      const bothQuiet =
+        !buyerSpeakingRef.current &&
+        !vendorSpeakingRef.current &&
+        Date.now() - lastQuietAtRef.current > 450;
+      if (!bothQuiet) return;
+      if (toVendorRef.current) {
+        const text = toVendorRef.current;
+        toVendorRef.current = "";
+        relayInFlightRef.current = true;
+        vendorControls.current?.say(text);
+        setTimeout(() => (relayInFlightRef.current = false), 800);
+      } else if (toBuyerRef.current) {
+        const text = toBuyerRef.current;
+        toBuyerRef.current = "";
+        relayInFlightRef.current = true;
+        sendUserMessage(text);
+        setTimeout(() => (relayInFlightRef.current = false), 800);
+      }
+    }, 250);
+    return () => clearInterval(pump);
+  }, [mode, status, sendUserMessage]);
 
   const pushTurn = (role, text) => {
     const turn = { role, text, turnIndex: turnsRef.current.length, at: new Date().toISOString() };
@@ -330,11 +377,20 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
           }
           onChanged?.();
         },
+        onModeChange: ({ mode: m }) => {
+          buyerSpeakingRef.current = m === "speaking";
+          if (m !== "speaking") lastQuietAtRef.current = Date.now();
+        },
         onMessage: ({ message, role }) => {
           if (role === "agent") {
             pushTurn("buyer", message);
             if (sim) vendorTurn(message);
-            if (counter) vendorControls.current?.say(message);
+            // Counter mode: queue for the relay pump instead of sending now.
+            if (counter) {
+              toVendorRef.current = toVendorRef.current
+                ? `${toVendorRef.current} ${message}`
+                : message;
+            }
           } else if (!sim && !counter) {
             pushTurn("vendor", message);
           }
@@ -456,7 +512,12 @@ function CallSession({ call, job, quote, onChanged, leverageAmount, canNegotiate
           controlsRef={vendorControls}
           onVendorText={(text) => {
             pushTurn("vendor", text);
-            sendUserMessage(text);
+            // Queue for the relay pump; delivered when both sessions are quiet.
+            toBuyerRef.current = toBuyerRef.current ? `${toBuyerRef.current} ${text}` : text;
+          }}
+          onVendorMode={(speaking) => {
+            vendorSpeakingRef.current = speaking;
+            if (!speaking) lastQuietAtRef.current = Date.now();
           }}
           onVendorDown={() => endSession()}
         />

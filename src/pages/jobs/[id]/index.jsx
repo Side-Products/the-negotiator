@@ -149,6 +149,15 @@ export default function JobMissionControl() {
         : `Dialing ${data.calls.length} vendors in batches of 5. Cards update live as calls progress.`,
     );
   });
+  const callMyPhone = run("mycall", async () => {
+    const number = window.prompt(
+      "The buyer agent will call this number so you can play the vendor yourself. Number to dial:",
+      "+918171648640",
+    );
+    if (!number) return;
+    await api(`/api/jobs/${id}/real-calls`, "POST", { testNumber: number.trim() });
+    toast.success(`Dialing ${number.trim()}. Pick up and give the agent a hard time.`);
+  });
   const addRolePlay = run("roleplay", () => api(`/api/jobs/${id}/calls`, "POST", { mode: "roleplay" }));
   const addLiveSim = run("livesim", () => api(`/api/jobs/${id}/calls`, "POST", { mode: "sim" }));
   const addCounterCalls = run("counter", async () => {
@@ -208,6 +217,14 @@ export default function JobMissionControl() {
           title="Requires ELEVENLABS_PHONE_NUMBER_ID and PUBLIC_URL"
         >
           {busy === "real" ? "Dialing…" : "Start real calls (4 batches of 5)"}
+        </CutButton>
+        <CutButton
+          variant="outline"
+          onClick={callMyPhone}
+          disabled={!job.confirmed || busy === "mycall"}
+          title="The buyer agent phones you; answer as the vendor. Repeatable, does not block the real run."
+        >
+          {busy === "mycall" ? "Dialing…" : "Call my phone"}
         </CutButton>
         {!job.confirmed && (
           <span className="text-xs text-muted-foreground">
