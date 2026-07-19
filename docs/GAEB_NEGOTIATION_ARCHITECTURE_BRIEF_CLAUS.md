@@ -9,6 +9,8 @@
 **Reference demo:** Tischlerarbeiten
 **Near-term goal:** a defensible HackNation demo and a design-customer pilot, without pretending that every trade or AVA platform is already validated
 
+**Two-call extension:** this brief and the base construction skill remain authoritative from X84 receipt onward. The [multi-outbound orchestration skill](../skills/orchestrate-construction-outbound-calls/SKILL.md) adds a separate, non-negotiating `TENDER_BRIEFING` for known invited suppliers before X84 submission and connects its structured outcome to the post-bid strategy. It does not authorize bidder discovery or cold outreach.
+
 ## 1. Decision in one sentence
 
 Build a **GAEB-native negotiation-preparation engine for any private, LV-based subcontractor trade**. The engine derives its scope from an immutable X83, levels submitted X84 bids, uses an evidence-carrying voice workflow to clarify and negotiate within a human mandate, and prepares the final human negotiation. Tischlerarbeiten is the reference-demo candidate and becomes “demonstrated and evaluated” only after the acceptance tests in this brief pass.

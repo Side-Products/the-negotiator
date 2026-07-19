@@ -1,0 +1,4 @@
+interface:
+  display_name: "Construction Multi-Outbound Calls"
+  short_description: "Coordinate two-stage subcontractor calls"
+  default_prompt: "Use $orchestrate-construction-outbound-calls to plan a compliant supplier briefing and evidence-backed follow-up negotiation."

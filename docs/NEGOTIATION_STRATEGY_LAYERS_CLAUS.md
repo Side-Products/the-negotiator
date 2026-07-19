@@ -4,7 +4,7 @@
 
 **Scope:** private German B2B, pre-award, LV-based subcontractor negotiations
 
-**Companion:** [GAEB negotiation architecture brief](GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md) and [construction negotiation skill](../skills/negotiate-construction-bids/SKILL.md)
+**Companions:** [GAEB negotiation architecture brief](GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md), [multi-outbound orchestration skill](../skills/orchestrate-construction-outbound-calls/SKILL.md), and [construction negotiation skill](../skills/negotiate-construction-bids/SKILL.md)
 
 ## 1. Decision
 
