@@ -173,7 +173,6 @@ select:focus-visible {
     0 24px
   );
 }
-
 /* Faint dotted grid for section texture — paints with the theme border color,
    so it reads in both light and dark. Pair with a radial mask to fade edges. */
 .bg-dot-grid {

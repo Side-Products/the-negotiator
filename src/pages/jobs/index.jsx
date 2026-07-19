@@ -3,6 +3,13 @@ import Link from "next/link";
 import { getVertical } from "@/config/verticals";
 import { CutButton } from "@/components/ui/CutButton";
 import Loader from "@/components/ui/Loader";
+import { TelegramIcon, WhatsAppIcon } from "@/components/ui/ChannelIcons";
+
+// Chat-created jobs carry their channel; web jobs stay unlabeled.
+const SOURCE_BADGE = {
+  whatsapp: { Icon: WhatsAppIcon, label: "WhatsApp", className: "text-[#25D366]" },
+  telegram: { Icon: TelegramIcon, label: "Telegram", className: "text-[#26A5E4]" },
+};
 
 const STATUS_BADGE = {
   draft: "badge-info",
@@ -71,6 +78,18 @@ export default function JobsPage() {
                 <span className={`badge ${STATUS_BADGE[job.status] || "badge-info"}`}>
                   {job.status}
                 </span>
+                {SOURCE_BADGE[job.source] && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                    title={`Started via ${SOURCE_BADGE[job.source].label}`}
+                  >
+                    {(() => {
+                      const { Icon, className } = SOURCE_BADGE[job.source];
+                      return <Icon className={`h-3.5 w-3.5 ${className}`} />;
+                    })()}
+                    {SOURCE_BADGE[job.source].label}
+                  </span>
+                )}
                 <span className="ml-auto text-xs text-muted-foreground">
                   {new Date(job.createdAt).toLocaleDateString()}
                 </span>
