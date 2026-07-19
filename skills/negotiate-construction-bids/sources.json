@@ -1,0 +1,297 @@
+{
+  "schemaVersion": "EvidenceSourcesV1",
+  "asOf": "2026-07-19",
+  "disclaimer": "Curated sources for product policy and research traceability; not legal, tax, procurement, or engineering advice.",
+  "sources": [
+    {
+      "id": "GAEB-001",
+      "title": "GAEB-Datenaustausch-FAQ",
+      "url": "https://www.gaeb.de/de/service/faq/gaeb-datenaustausch-faq/",
+      "tier": "A",
+      "type": "official_standard_guidance",
+      "jurisdiction": "DE",
+      "operationalUse": "Distinguish X83/X84 content phases and GAEB content exchange from AVA transport integration.",
+      "limitations": "Does not prove that a particular AVA implementation is correct or provide a universal cloud API."
+    },
+    {
+      "id": "GAEB-002",
+      "title": "GAEB-Datenaustausch Downloads",
+      "url": "https://www.gaeb.de/de/service/downloads/gaeb-datenaustausch/",
+      "tier": "A",
+      "type": "official_standard_download",
+      "jurisdiction": "DE",
+      "operationalUse": "Pin the current stable 3.3 package, exact version/date, and official XSDs; keep 3.4 beta blocked.",
+      "limitations": "Current-version status can change and must be rechecked before a production release."
+    },
+    {
+      "id": "GAEB-003",
+      "title": "Fachdokumentation GAEB DA XML 3.3",
+      "url": "https://www.gaeb.de/wp-content/uploads/2023/09/Fachdokumentation_GAEB-DA-XML_3.3_2023-01.pdf",
+      "tier": "A",
+      "type": "official_technical_documentation",
+      "jurisdiction": "DE",
+      "operationalUse": "Design deterministic X83/X84 structure mapping and version validation.",
+      "limitations": "Formal validity does not prove technical correctness, commercial completeness, authority, or contract formation."
+    },
+    {
+      "id": "LAW-001",
+      "title": "GWB §97 — Principles of award procedures",
+      "url": "https://www.gesetze-im-internet.de/gwb/__97.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Hard-stop public or unclear procurement for specialist review.",
+      "limitations": "Must be read with contracting-authority, threshold, state, budget, grant, and flow-down rules."
+    },
+    {
+      "id": "LAW-002",
+      "title": "GWB §99 — Public contracting authorities",
+      "url": "https://www.gesetze-im-internet.de/gwb/__99.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Do not infer private procurement merely from private legal form; capture public funding and project purpose.",
+      "limitations": "Application is fact-specific and requires legal/procurement review."
+    },
+    {
+      "id": "LAW-003",
+      "title": "StGB §201 — Confidentiality of the spoken word",
+      "url": "https://www.gesetze-im-internet.de/stgb/__201.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Recording off until affirmative informed permission; restrict subsequent use/access.",
+      "limitations": "Exact treatment of all transient processing patterns requires counsel."
+    },
+    {
+      "id": "LAW-004",
+      "title": "DSK decision on recording telephone calls",
+      "url": "https://www.bfdi.bund.de/SharedDocs/Downloads/DE/DSK/DSKBeschluessePositionspapiere/DSK_20180323_Beschluss_Telefongespraeche.pdf?__blob=publicationFile&v=7",
+      "tier": "A",
+      "type": "regulator_guidance",
+      "jurisdiction": "DE",
+      "operationalUse": "Require explicit opt-in before recording; silence/continuation is not consent.",
+      "limitations": "Guidance does not select the lawful basis for every downstream processing purpose."
+    },
+    {
+      "id": "LAW-005",
+      "title": "EU AI Act Article 50 and Article 113",
+      "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj",
+      "tier": "A",
+      "type": "eu_regulation",
+      "jurisdiction": "EU",
+      "operationalUse": "Disclose AI no later than first interaction; implement before Article 50 applies on 2026-08-02.",
+      "limitations": "Does not establish a final product-risk classification or mean every AI Act provision has the same application date."
+    },
+    {
+      "id": "LAW-006",
+      "title": "General Data Protection Regulation",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+      "tier": "A",
+      "type": "eu_regulation",
+      "jurisdiction": "EU",
+      "operationalUse": "Design purpose, lawful basis, notice, minimization, processor, security, retention, rights, DPIA, and transfer controls.",
+      "limitations": "No single legal basis or DPIA conclusion can be hardcoded for every customer and data flow."
+    },
+    {
+      "id": "LAW-007",
+      "title": "BGB §145 — Binding effect of an offer",
+      "url": "https://www.gesetze-im-internet.de/bgb/__145.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Prohibit agent wording that accepts, awards, orders, or declares a final agreement.",
+      "limitations": "Contract formation depends on all declarations, authority, form, reservations, and facts; a phone call is not automatically nonbinding."
+    },
+    {
+      "id": "LAW-008",
+      "title": "BGB §§164 and 177 — Representation and authority",
+      "url": "https://www.gesetze-im-internet.de/bgb/__164.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Separate claimed speaker role, verified authority, binding intent, and human approval.",
+      "limitations": "The system must not make a definitive legal authority judgment from call behavior."
+    },
+    {
+      "id": "LAW-009",
+      "title": "BGB §310 — Scope of control of standard terms",
+      "url": "https://www.gesetze-im-internet.de/bgb/__310.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Capture exact contractual basis and VOB/B version/deviations rather than assuming applicability.",
+      "limitations": "Not a complete analysis of whether particular VOB/B terms are incorporated or valid."
+    },
+    {
+      "id": "LAW-010",
+      "title": "UStG §13b — Recipient as tax debtor",
+      "url": "https://www.gesetze-im-internet.de/ustg_1980/__13b.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Compare net first and capture supplier-stated tax treatment/evidence for accounting review.",
+      "limitations": "The agent cannot infer reverse charge solely from a trade label."
+    },
+    {
+      "id": "LAW-011",
+      "title": "GWB §1 — Anti-competitive agreements",
+      "url": "https://www.gesetze-im-internet.de/gwb/__1.html",
+      "tier": "A",
+      "type": "statute",
+      "jurisdiction": "DE",
+      "operationalUse": "Prohibit bidder coordination and gate competitor-information disclosure.",
+      "limitations": "Does not itself answer every buyer-side bid-disclosure scenario."
+    },
+    {
+      "id": "NEG-001",
+      "title": "The influence of social motives on integrative negotiation: a meta-analytic review",
+      "url": "https://doi.org/10.1037/0022-3514.78.5.889",
+      "tier": "B",
+      "type": "meta_analysis",
+      "jurisdiction": "general",
+      "operationalUse": "Combine cooperative problem solving with resistance to unauthorized yielding.",
+      "limitations": "Experimental tasks are not construction field evidence."
+    },
+    {
+      "id": "NEG-002",
+      "title": "Interpersonal trust within negotiations: meta-analytic evidence",
+      "url": "https://doi.org/10.5465/amj.2012.0461",
+      "tier": "B",
+      "type": "meta_analysis",
+      "jurisdiction": "general",
+      "operationalUse": "Use calibrated trust, transparency, evidence, and correction while retaining verification.",
+      "limitations": "Does not validate a single rapport script."
+    },
+    {
+      "id": "NEG-003",
+      "title": "Communication media and negotiation: two meta-analyses",
+      "url": "https://doi.org/10.1177/1088868311417186",
+      "tier": "B",
+      "type": "meta_analysis",
+      "jurisdiction": "general",
+      "operationalUse": "Treat voice as context-dependent; switch to written/human modes when necessary.",
+      "limitations": "Older lab studies and heterogeneous tasks."
+    },
+    {
+      "id": "NEG-004",
+      "title": "Accuracy of deception judgments",
+      "url": "https://doi.org/10.1207/s15327957pspr1003_2",
+      "tier": "B",
+      "type": "meta_analysis",
+      "jurisdiction": "general",
+      "operationalUse": "Ban voice/personality lie detection; verify claims from documents and explicit confirmation.",
+      "limitations": "Human judgment evidence; not a validation of any automated detector."
+    },
+    {
+      "id": "NEG-005",
+      "title": "First offers as anchors",
+      "url": "https://doi.org/10.1037/0022-3514.81.4.657",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Load target and anchor-inconsistent evidence before responding to submitted supplier prices.",
+      "limitations": "Does not justify invented or overaggressive counter-anchors."
+    },
+    {
+      "id": "NEG-006",
+      "title": "The information-anchoring model of first offers",
+      "url": "https://doi.org/10.1177/0956797613520168",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Keep reservation point, budget, urgency, and internal priorities private unless authorized.",
+      "limitations": "Experimental scenarios; disclosure effects are context-specific."
+    },
+    {
+      "id": "NEG-007",
+      "title": "Too precise to pursue: precision and expertise in first offers",
+      "url": "https://doi.org/10.1177/0956797616666074",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Use precise arithmetic but avoid unsupported pseudo-precise negotiated anchors.",
+      "limitations": "Studied other expert markets."
+    },
+    {
+      "id": "NEG-008",
+      "title": "The effect of question phrasing on deception",
+      "url": "https://doi.org/10.1016/j.obhdp.2018.05.006",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Ask specific evidence-triggered exclusion questions, then verify against durable evidence.",
+      "limitations": "Question wording can have relational costs and cannot guarantee truth."
+    },
+    {
+      "id": "NEG-009",
+      "title": "Multiple equivalent simultaneous offers reduce the negotiator dilemma",
+      "url": "https://doi.org/10.1016/j.obhdp.2019.01.007",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Use at most three mandate-approved commercial packages with a real buyer utility model.",
+      "limitations": "No technical substitutions; equivalent value must be established, not assumed."
+    },
+    {
+      "id": "NEG-010",
+      "title": "Active Listening in Integrative Negotiation",
+      "url": "https://doi.org/10.1177/00936502241230711",
+      "tier": "B",
+      "type": "observational_study",
+      "jurisdiction": "general",
+      "operationalUse": "Paraphrase multi-issue answers and ask for correction; do not mirror mechanically.",
+      "limitations": "Observational German student sample; active listening alone did not improve rapport or understanding."
+    },
+    {
+      "id": "NEG-011",
+      "title": "Building and rebuilding trust with promises and apologies",
+      "url": "https://doi.org/10.1016/j.obhdp.2006.05.005",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Prohibit bluffing; correct accidental errors immediately and preserve history.",
+      "limitations": "Experimental trust context."
+    },
+    {
+      "id": "NEG-012",
+      "title": "Effects of feigned anger in negotiation",
+      "url": "https://doi.org/10.1037/apl0000072",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Ban strategic anger and intimidation.",
+      "limitations": "Does not address genuine emotion."
+    },
+    {
+      "id": "NEG-013",
+      "title": "Curtailing deception: direct questions, lies and omissions",
+      "url": "https://doi.org/10.1108/eb022825",
+      "tier": "B",
+      "type": "experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Use direct questions but require document reconciliation because questions are not proof.",
+      "limitations": "Small samples; direct questions can shift the form of deception."
+    },
+    {
+      "id": "NEG-014",
+      "title": "Machines versus humans: AI chatbot disclosure and purchases",
+      "url": "https://doi.org/10.1287/mksc.2019.1192",
+      "tier": "B",
+      "type": "field_experiment",
+      "jurisdiction": "general",
+      "operationalUse": "Keep required AI disclosure concise and state competence/limits immediately.",
+      "limitations": "Consumer loan-renewal sales, not German B2B construction negotiation."
+    },
+    {
+      "id": "PRACT-001",
+      "title": "Luca topic distribution",
+      "url": null,
+      "tier": "D",
+      "type": "practitioner_hypothesis",
+      "jurisdiction": "DE",
+      "operationalUse": "Generate interview questions and field-validation categories only.",
+      "limitations": "Unknown sample and denominator; ranges overlap and sum inconsistently; must not drive strategy weights or market claims."
+    }
+  ]
+}

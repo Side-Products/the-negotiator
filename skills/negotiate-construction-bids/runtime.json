@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "CompiledSkillV1",
+  "id": "negotiate-construction-bids",
+  "version": "1.0.0",
+  "maturity": {
+    "current": "reference_demo_candidate",
+    "allowedClaims": ["structurally_intended"],
+    "blockedClaimsUntilEvidence": ["fixture_tested", "demo_evaluated", "pilot_validated", "production_validated"]
+  },
+  "hashPolicy": {
+    "sourceHash": "sha256_of_exact_immutable_artifact_bytes",
+    "scopeHash": "versioned_canonical_confirmed_x83_package_identity",
+    "scopeHashIsNotProofOfBidConformance": true,
+    "bidContentHash": "sha256_of_versioned_canonical_x84_bid_content",
+    "conformanceStatusRequired": true
+  },
+  "applicabilityPolicy": {
+    "jurisdiction": ["DE"],
+    "businessContext": "B2B",
+    "procurementTypesAllowed": ["private"],
+    "procurementTypesBlocked": ["public", "subsidized", "sealed", "unknown"],
+    "stagesAllowed": ["pre_award_submitted_bid"],
+    "stagesBlocked": ["pre_bid_cold_outreach", "post_award", "change_order", "claim", "defect", "delay_dispute", "contract_amendment"],
+    "supportedArtifacts": [
+      {"phase": "83", "format": "GAEB_DA_XML", "version": "3.3", "issue": "2021-05"},
+      {"phase": "84", "format": "GAEB_DA_XML", "version": "3.3", "issue": "2021-05"}
+    ],
+    "blockedArtifacts": ["D83", "D84", "P83", "P84", "X84P"],
+    "procurementClearanceFields": ["buyerStatus", "sectorContractingEntity", "publicFunding", "fundingPercentage", "fundingPurpose", "grantConditionsChecked", "mainContractFlowdowns", "procurementRegime", "legalReviewer"],
+    "procurementClearanceRule": "supplier_contact_only_after_authorized_human_confirms_private_b2b_and_no_public_or_grant_procurement_obligation",
+    "requires": [
+      "confirmed_private_procurement",
+      "known_invited_bidder",
+      "submitted_x84_bid",
+      "user_authority",
+      "active_mandate",
+      "confirmed_awardable_package",
+      "confirmed_trade",
+      "confirmed_scope_hash"
+    ],
+    "hardStops": [
+      "procurement_legality_unclear",
+      "mandate_expired",
+      "technical_or_legal_approval_requested",
+      "supplier_opt_out",
+      "autonomous_award_requested"
+    ]
+  },
+  "tradeProfiles": {
+    "default": "generic",
+    "profiles": [
+      {
+        "id": "tischlerarbeiten",
+        "path": "profiles/tischlerarbeiten.json",
+        "status": "reference_demo_candidate",
+        "aliases": ["tischlerarbeiten", "schreinerarbeiten", "woodwork", "joinery"]
+      }
+    ],
+    "classification": {
+      "fields": ["tradeRaw", "tradeNormalized", "classificationSource", "classificationConfidence", "tradeConfirmedByUser"],
+      "sources": ["GAEB_BoQInfo", "GAEB_CPVCode", "STLB_Bau_reference", "LV_title_text"],
+      "requiresUserConfirmation": true,
+      "mayNotInferTechnicalRequirementsFromLabel": true
+    }
+  },
+  "genericMode": {
+    "id": "generic",
+    "preserveTechnicalTextVerbatim": true,
+    "allowedQuestionDomains": ["inclusion", "exclusion", "quantity", "unit", "price", "capacity", "logistics", "schedule", "payment", "skonto", "retention", "security", "validity", "warranty_statement", "tax_treatment"],
+    "prohibitedActions": ["material_substitution", "technical_alternative", "trade_specific_benchmark_claim", "engineering_judgment", "legal_interpretation"],
+    "escalate": ["technical_ambiguity", "safety_relevance", "approval_relevance", "fire_protection", "acoustics", "structural_effect", "specified_quality_change"]
+  },
+  "stateMachine": {
+    "initial": "GAEB_IMPORTED",
+    "states": ["GAEB_IMPORTED", "GAEB_VALIDATED", "PACKAGE_CONFIRMED", "BIDS_LEVELLED", "CLARIFICATION_REQUIRED", "VOICE_CLARIFICATION", "SPEAKER_CONFIRMED_NONBINDING_RECAP", "NEGOTIATION_READY", "VOICE_NEGOTIATION", "PREP_REPORT_READY", "HUMAN_FINAL_NEGOTIATION"],
+    "transitions": [
+      ["GAEB_IMPORTED", "GAEB_VALIDATED"],
+      ["GAEB_VALIDATED", "PACKAGE_CONFIRMED"],
+      ["PACKAGE_CONFIRMED", "BIDS_LEVELLED"],
+      ["BIDS_LEVELLED", "CLARIFICATION_REQUIRED"],
+      ["BIDS_LEVELLED", "NEGOTIATION_READY"],
+      ["BIDS_LEVELLED", "PREP_REPORT_READY"],
+      ["CLARIFICATION_REQUIRED", "VOICE_CLARIFICATION"],
+      ["VOICE_CLARIFICATION", "SPEAKER_CONFIRMED_NONBINDING_RECAP"],
+      ["NEGOTIATION_READY", "VOICE_NEGOTIATION"],
+      ["VOICE_NEGOTIATION", "SPEAKER_CONFIRMED_NONBINDING_RECAP"],
+      ["SPEAKER_CONFIRMED_NONBINDING_RECAP", "BIDS_LEVELLED"],
+      ["PREP_REPORT_READY", "HUMAN_FINAL_NEGOTIATION"]
+    ],
+    "forbiddenStates": ["AWARDED", "ACCEPTED", "ORDERED", "CONTRACTED"],
+    "negotiationReadyRequires": ["sufficient_scope_conformance", "no_blocking_comparability_issue", "active_mandate", "negotiation_objective", "buyer_target", "reservation_boundary", "BATNA", "authorized_concessions", "stop_rules"],
+    "transitionAuditFields": ["actor", "timestamp", "skillHash", "scopeHash", "reason", "evidenceIds"]
+  },
+  "redFlags": [
+    {"id": "missing_x83_position", "severity": "blocking_comparability"},
+    {"id": "extra_or_structurally_changed_position", "severity": "blocking_comparability"},
+    {"id": "quantity_changed", "severity": "blocking_comparability"},
+    {"id": "unit_changed", "severity": "blocking_comparability"},
+    {"id": "zero_price", "severity": "clarify"},
+    {"id": "unpriced_position", "severity": "blocking_comparability"},
+    {"id": "alternate_replaces_base_scope", "severity": "blocking_comparability"},
+    {"id": "bauseits", "severity": "clarify"},
+    {"id": "nach_aufwand_without_rate_or_cap", "severity": "clarify"},
+    {"id": "material_or_labor_inclusion_unclear", "severity": "clarify"},
+    {"id": "ancillary_cost_missing", "severity": "clarify"},
+    {"id": "lump_sum_hides_positions", "severity": "clarify"},
+    {"id": "validity_missing", "severity": "clarify"},
+    {"id": "schedule_missing", "severity": "clarify"},
+    {"id": "line_total_mismatch", "severity": "blocking_comparability"},
+    {"id": "unsupported_discount_or_surcharge", "severity": "clarify"},
+    {"id": "verbal_written_conflict", "severity": "blocking_confirmation"},
+    {"id": "tax_treatment_unknown", "severity": "clarify"},
+    {"id": "supplier_authority_unknown", "severity": "blocking_written_confirmation"}
+  ],
+  "negotiationPolicy": {
+    "callPurposes": ["CLARIFY", "NEGOTIATE"],
+    "callOutcomes": ["SPEAKER_CONFIRMED_NONBINDING_RECAP", "CALLBACK_COMMITMENT", "DECLINED", "HUMAN_HANDOFF"],
+    "callPhases": ["OPEN_DISCLOSE", "AUTHORITY", "AGENDA", "SCOPE_GATE", "DIAGNOSE", "BARGAIN", "RECAP", "DURABLE_CONFIRMATION", "CLOSE_OR_HANDOFF"],
+    "openingRequirements": ["disclose_AI", "state_principal", "state_subject", "state_non_binding_authority", "confirm_speaker_role"],
+    "recording": {"default": "off", "requiresDocumentedConsentBeforeCapture": true, "reconsentWhenParticipantJoins": true, "continuationDoesNotImplyConsent": true, "noConsentMeansNoRecordingOrStoredTranscript": true},
+    "claimStates": ["extracted_from_x84", "verbal_unconfirmed", "speaker_confirmed_nonbinding_recap", "written_revised_bid"],
+    "evidenceStates": ["direct", "derived", "unverified"],
+    "bindingIntentStates": ["excluded", "claimed", "unknown"],
+    "speakerAuthorityStates": ["claimed", "verified", "unknown"],
+    "humanApprovalStates": ["not_requested", "pending", "approved", "rejected"],
+    "callPlanRequiredFields": ["callPurpose", "packageId", "scopeHash", "bidContentHash", "supplierId", "bidVersion", "language", "mandateExpiry", "targetOutcome", "issueCards", "eligibleLeverageCards", "authorizedPackages", "prohibitedClaims", "openingScript", "recordingPolicy", "turnPolicy", "stopRules", "recapSchema", "durableConfirmationChannel"],
+    "negotiationOnlyCallPlanFields": ["buyerTarget", "reservationBoundary", "BATNA", "approvedConcessionLadder"],
+    "issueCardRequiredFields": ["issueId", "lvRefs", "authoritativeEvidence", "currentSupplierPosition", "buyerInterest", "aspiration", "target", "limit", "openingAsk", "diagnosticQuestion", "permittedTrades", "disclosurePolicy", "stopOrHandoffRule", "resolvedWhen"],
+    "turnPolicy": {
+      "maxPriorityIssuesPerCall": 5,
+      "oneQuestionPerTurn": true,
+      "targetMaxGermanWordsPerTurn": 35,
+      "vagueAnswerNarrowingAttempts": 2,
+      "clearNoMovementBeforePivotOrStop": 2,
+      "neverFillSilenceAfterAsk": true,
+      "largeExceptionSetMode": "send_numbered_list_then_call_top_blockers"
+    },
+    "numericSafety": ["resolve_EP_vs_GP", "resolve_net_vs_gross", "resolve_discount_base", "resolve_quantity_and_unit", "resolve_tax_statement", "resolve_conditions", "resolve_validity", "deterministic_recalculation"],
+    "strategyOrder": ["restore_scope", "cap_variable_terms", "include_ancillary_fees", "ask_for_improvement", "eligible_comparable_offer", "approved_conditional_trade", "authorized_non_price_improvement"],
+    "leverageEligibility": {
+      "all": ["same_scope_hash", "durable_supplier_evidence", "valid_at_call_time", "sufficiently_complete", "conformance_sufficient", "disclosure_permitted"],
+      "productionExactCompetitorPriceDefault": false,
+      "syntheticFixtureOverride": "synthetic_fixture_exact_disclosure"
+    },
+    "requiredEventFields": ["ask", "claim", "eligibleSourceId", "approvedConcession", "before", "after", "delta", "evidenceIds"],
+    "prohibited": ["invented_anchor", "invented_offer", "invented_budget", "invented_scarcity", "invented_deadline", "invented_authority", "invented_future_work", "fabricated_urgency", "anger_manipulation", "guilt_manipulation", "fear_manipulation", "personality_inference", "emotion_inference", "lie_detection", "mechanical_split_the_difference", "automatic_reciprocal_concession", "automatic_decreasing_concession", "pseudo_precise_anchor", "unapproved_concession", "technical_scope_reduction", "autonomous_commitment"],
+    "practitionerHypotheses": [
+      {
+        "id": "luca_topic_distribution",
+        "claim": {"pricing": "30-40%", "scheduling": "25-35%", "scope": "15-20%", "payment": "10-15%"},
+        "source": "practitioner_hypothesis",
+        "confidence": "low",
+        "validationStatus": "unvalidated",
+        "doNotUseAsStrategyWeight": true,
+        "criticalNote": "Intervals sum to 80-110%; pricing plus scheduling yields 55-75%, not necessarily 60-75%; denominator is undefined."
+      }
+    ]
+  },
+  "rankingPolicy": {
+    "eligibleOnlyWhen": ["confirmed_package", "same_scope_hash"],
+    "orderedCriteria": ["mandatory_scope_coverage", "hard_deadline_feasibility", "supplier_confirmed_comparable_total_net", "evidence_quality", "schedule_reliability", "commercial_terms", "risk_flags"],
+    "neverRankHeadlineLowballFirstWhenIncomplete": true,
+    "separateAmounts": ["original_total_net", "supplier_confirmed_comparable_total_net", "estimated_total_net", "unknown_addbacks_net"]
+  },
+  "reportPolicy": {
+    "schema": "NegotiationPrepReportV1",
+    "formats": ["json", "human_readable"],
+    "requiredSections": ["package_identity", "trade_classification", "artifact_versions", "line_item_preisspiegel", "scope_deviations", "commercial_terms", "schedule_and_capacity", "supplier_confirmations", "negotiation_events", "evidence_index", "technical_escalations", "legal_escalations", "unresolved_questions", "human_negotiation_agenda"],
+    "decisionStatus": "HUMAN_APPROVAL_REQUIRED",
+    "sourceArtifactsImmutable": true,
+    "writebackMode": "derived_artifact_only",
+    "mustLabelFixtureConnector": "Local GAEB fixture"
+  }
+}

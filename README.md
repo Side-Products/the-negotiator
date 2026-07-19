@@ -4,6 +4,19 @@ Voice agents that call, compare, and haggle — pick your market, never overpay 
 
 Built for the Hack-Nation 6th Global AI Hackathon, ElevenLabs Challenge 01. The system runs the full loop: **intake** (voice interview + document upload → one confirmed job spec) → **calls** (parallel buyer-agent calls against vendors with hidden negotiation styles) → **close** (leverage-driven round 2 where the price measurably drops in-call, then a ranked, evidence-backed report with recordings, transcripts, and red flags).
 
+> **Construction team:** the GAEB construction path described in the documents below is an implementation plan and skill package; it is **not implemented in the current app yet**. Do not reuse the current moving-specific `committed` quote flag, dollar/market assumptions, cold-call discovery, or recording flow as proof that the construction requirements are met.
+
+## GAEB construction handoff
+
+- [Architecture brief — Claus](GAEB_NEGOTIATION_ARCHITECTURE_BRIEF_CLAUS.md): product boundary, data contracts, proof-carrying wedge, delivery phases, acceptance tests, and demo script.
+- [Construction negotiation skill](skills/negotiate-construction-bids/SKILL.md): live conversation and negotiation policy.
+- [Runtime policy](skills/negotiate-construction-bids/runtime.json): machine-readable gates, states, red flags, leverage, and report policy.
+- [Tischlerarbeiten profile](skills/negotiate-construction-bids/profiles/tischlerarbeiten.json): triggered reference-demo questions and mandatory escalations.
+- [Evidence register](skills/negotiate-construction-bids/EVIDENCE.md): scientific, GAEB, construction, German, and EU sources with limitations.
+- [Blocking eval specification](skills/negotiate-construction-bids/evals/cases.json): required parser, dialogue, legal, numeric, and leverage behaviors.
+
+The intended claim is broad structural support for conforming, private LV-based packages with safe generic behavior; Tischlerarbeiten remains a `reference_demo_candidate` until the fixtures, expert review, and blocking evals pass.
+
 ## How it works
 
 **Two generic ElevenLabs agents, zero per-vendor agents.** Everything vertical- and vendor-specific is injected at session start via dynamic variables built server-side from a config file:

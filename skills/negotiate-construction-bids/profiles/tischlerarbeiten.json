@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "TradeProfileV1",
+  "id": "tischlerarbeiten",
+  "displayName": "Tischlerarbeiten",
+  "aliases": ["Schreinerarbeiten", "Woodwork", "Joinery"],
+  "status": "reference_demo_candidate",
+  "demoOnlyMarketData": true,
+  "classificationHints": {
+    "titleTerms": ["Tischlerarbeiten", "Schreinerarbeiten", "Innentüren", "Einbaumöbel", "Holzwerkstoffe"],
+    "cpvCodes": ["45421000-4", "45421100-5"]
+  },
+  "questionGroups": [
+    {
+      "id": "aufmass",
+      "trigger": ["x83_mentions_aufmass", "x84_omits_or_deviates_aufmass"],
+      "askTemplate": "In Position {{positionId}} ist Aufmaß beschrieben. Ist es in Ihrem Preis enthalten, ausgeschlossen oder noch offen?",
+      "followupTemplate": "Welche Voraussetzung, welcher Termin und welcher Preis gelten dafür?",
+      "answerSchema": ["state", "conditions", "date", "amountNet", "evidence"],
+      "resolvedWhen": ["state_confirmed", "conditions_captured", "price_effect_known"]
+    },
+    {
+      "id": "planning",
+      "trigger": ["x83_mentions_werkplanung", "x83_mentions_montageplanung", "x84_planning_unclear"],
+      "askTemplate": "Ist die in Position {{positionId}} geforderte Werk- oder Montageplanung unverändert enthalten?",
+      "followupTemplate": "Welche konkrete Planbeistellung oder Freigabe benötigen Sie bis wann?",
+      "answerSchema": ["included", "requiredInput", "deadline", "priceEffect", "evidence"],
+      "resolvedWhen": ["base_scope_answered", "dependencies_captured"]
+    },
+    {
+      "id": "materials_and_finish",
+      "trigger": ["x84_material_deviation", "x84_finish_deviation", "material_or_finish_unclear"],
+      "askTemplate": "Bieten Sie die in Position {{positionId}} genannte Ausführung {{verbatimRequirement}} unverändert an?",
+      "followupTemplate": "Bitte nennen Sie die Abweichung; den Preis der ausgeschriebenen Basis erfassen wir getrennt von Ihrer Alternative.",
+      "answerSchema": ["baseIncluded", "deviationText", "basePriceNet", "alternatePriceNet", "evidence"],
+      "resolvedWhen": ["base_scope_priced", "alternate_separated"],
+      "escalation": ["material_substitution", "specified_quality_change", "technical_equivalence_claim"]
+    },
+    {
+      "id": "fittings_and_locks",
+      "trigger": ["x83_mentions_fittings_or_locks", "x84_fittings_or_locks_unclear"],
+      "askTemplate": "Welche der in Position {{positionId}} genannten Beschläge, Schließsysteme oder Zubehörteile sind nicht enthalten?",
+      "followupTemplate": "Welcher Nettobetrag und welche Lieferbedingung gelten für den fehlenden Bestandteil?",
+      "answerSchema": ["excludedItems", "amountNet", "conditions", "evidence"],
+      "resolvedWhen": ["each_referenced_component_classified"]
+    },
+    {
+      "id": "classifications",
+      "trigger": ["x83_mentions_fire_smoke_acoustic_security", "x84_classification_deviation_or_omission"],
+      "askTemplate": "Ist die in Position {{positionId}} ausgeschriebene Klassifikation {{verbatimRequirement}} unverändert im Basisangebot enthalten?",
+      "followupTemplate": "Welche Abweichung oder welcher fehlende Nachweis besteht? Ich darf die technische Gleichwertigkeit nicht bewerten.",
+      "answerSchema": ["baseIncluded", "classificationAsQuoted", "evidenceDocuments", "deviationText"],
+      "resolvedWhen": ["base_scope_answered", "evidence_documents_identified"],
+      "escalation": ["fire_classification_change", "smoke_control_change", "acoustic_classification_change", "security_classification_change", "technical_equivalence_claim"]
+    },
+    {
+      "id": "samples_and_approvals",
+      "trigger": ["x83_mentions_sample_or_approval", "x84_sample_or_approval_unclear"],
+      "askTemplate": "Sind die in Position {{positionId}} genannten Muster- und Freigabeleistungen im Preis enthalten?",
+      "followupTemplate": "Welche Freigabe benötigen Sie bis zu welchem Datum, damit Ihr Termin gilt?",
+      "answerSchema": ["included", "approvalOwner", "approvalDeadline", "scheduleEffect", "evidence"],
+      "resolvedWhen": ["included_state_confirmed", "approval_dependency_captured"]
+    },
+    {
+      "id": "logistics",
+      "trigger": ["x83_mentions_logistics", "x84_logistics_unclear", "ancillary_cost_missing"],
+      "askTemplate": "Welche der in Position {{positionId}} genannten Logistikleistungen sind in Ihrem Preis nicht enthalten?",
+      "followupTemplate": "Welche Kosten oder bauseitigen Voraussetzungen entstehen daraus?",
+      "answerSchema": ["excludedServices", "amountNet", "siteDependencies", "evidence"],
+      "resolvedWhen": ["all_referenced_logistics_classified", "price_effect_known"]
+    },
+    {
+      "id": "installation",
+      "trigger": ["x83_mentions_installation", "x84_installation_unclear"],
+      "askTemplate": "Ist die in Position {{positionId}} beschriebene Montageleistung unverändert enthalten?",
+      "followupTemplate": "Welche Anschlüsse, Abdichtungen, Schutz- oder Reinigungsleistungen sind ausgeschlossen?",
+      "answerSchema": ["included", "excludedServices", "amountNet", "evidence"],
+      "resolvedWhen": ["base_scope_answered", "exclusions_priced_or_marked_unknown"]
+    },
+    {
+      "id": "schedule",
+      "trigger": ["schedule_missing", "capacity_unclear", "x83_contains_execution_window"],
+      "askTemplate": "Welcher früheste belastbare Termin gilt für {{milestone}} unter dem ausgeschriebenen Umfang?",
+      "followupTemplate": "Welche bestätigte Abhängigkeit begrenzt diesen Termin?",
+      "answerSchema": ["milestone", "date", "duration", "capacity", "dependency", "validity", "evidence"],
+      "resolvedWhen": ["date_and_duration_captured", "dependencies_identified"]
+    },
+    {
+      "id": "handover",
+      "trigger": ["x83_mentions_documentation_or_acceptance", "x84_handover_scope_unclear"],
+      "askTemplate": "Welche der in Position {{positionId}} genannten Dokumentations- oder Abnahmeleistungen sind nicht enthalten?",
+      "followupTemplate": "Welcher Nachweis fehlt, wer liefert ihn und bis wann?",
+      "answerSchema": ["excludedDeliverables", "owner", "deadline", "amountNet", "evidence"],
+      "resolvedWhen": ["each_required_deliverable_classified"]
+    }
+  ],
+  "mandatoryEscalations": ["material_substitution", "fire_classification_change", "smoke_control_change", "acoustic_classification_change", "security_classification_change", "approval_basis_change", "specified_quality_change", "technical_equivalence_claim"],
+  "profileMayNot": ["add_requirements_absent_from_X83", "override_X83", "approve_technical_alternative", "assert_market_benchmark"]
+}

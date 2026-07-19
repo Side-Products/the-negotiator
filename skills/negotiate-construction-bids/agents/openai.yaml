@@ -1,4 +1,4 @@
 interface:
-  display_name: "Construction Bid Negotiator"
-  short_description: "Negotiate comparable subcontractor bids"
-  default_prompt: "Use $negotiate-construction-bids to turn this construction scope into comparable subcontractor quotes and negotiate the best complete terms."
+  display_name: "GAEB Construction Negotiator"
+  short_description: "Level and clarify GAEB subcontractor bids"
+  default_prompt: "Use $negotiate-construction-bids to level these X83/X84 bids, identify evidence-backed clarifications, and prepare the final human negotiation."
